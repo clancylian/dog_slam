@@ -508,14 +508,14 @@ def generate_launch_description():
                 )
             )
 
-    # if MANUAL_BUILD_MAP or AUTO_BUILD_MAP:
-    #     # 建图模式 + SC-PGO
-    #     unified_nodes.append(
-    #         TimerAction(
-    #             period=10.0,  # 延迟10秒启动SC-PGO，确保LIO算法已初始化
-    #             actions=[sc_pgo_node]
-    #         )
-    #     )
+    if MANUAL_BUILD_MAP or AUTO_BUILD_MAP:
+        # 建图模式 + SC-PGO
+        unified_nodes.append(
+            TimerAction(
+                period=10.0,  # 延迟10秒启动SC-PGO，确保LIO算法已初始化
+                actions=[sc_pgo_node]
+            )
+        )
     
 
         

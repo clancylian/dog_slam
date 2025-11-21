@@ -56,6 +56,12 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install the GPS Waypoint Navigator script as executable
+install(
+  PROGRAMS scripts/gps_waypoint_navigator.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # Install dynamic base footprint script as executable
 install(
   PROGRAMS scripts/dynamic_base_footprint.py
