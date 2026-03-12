@@ -80,6 +80,7 @@ std::queue<std::shared_ptr<nav_msgs::msg::Odometry>> odometryBuf;
 std::queue<std::shared_ptr<sensor_msgs::msg::PointCloud2>> fullResBuf;
 std::queue<std::shared_ptr<sensor_msgs::msg::NavSatFix>> gpsBuf;
 std::queue<std::pair<int, int>> scLoopICPBuf;
+std::queue<std::tuple<int, int, float>> scLoopICPBufWithYaw;
 
 std::mutex mBuf;
 std::mutex mKF;
@@ -241,9 +242,8 @@ void initNoises(void) {
   robustNoiseVector6 << loopNoiseScore, loopNoiseScore, loopNoiseScore,
       loopNoiseScore, loopNoiseScore, loopNoiseScore;
   robustLoopNoise = gtsam::noiseModel::Robust::Create(
-      gtsam::noiseModel::mEstimator::Cauchy::Create(
-          1),  // optional: replacing Cauchy by DCS or GemanMcClure is okay but
-               // Cauchy is empirically good.
+      gtsam::noiseModel::mEstimator::Huber::Create(
+          1.345),  // Huber kernel is more robust than Cauchy for loop closures
       gtsam::noiseModel::Diagonal::Variances(robustNoiseVector6));
 
   double bigNoiseTolerentToXY = 1000000000.0;  // 1e9
@@ -469,8 +469,8 @@ void loopFindNearKeyframesCloud(pcl::PointCloud<PointType>::Ptr &nearKeyframes,
 }  // loopFindNearKeyframesCloud
 
 std::optional<gtsam::Pose3> doICPVirtualRelative(int _loop_kf_idx,
-                                                 int _curr_kf_idx) {
-  // parse pointclouds
+                                                 int _curr_kf_idx,
+                                                 float yaw_diff = 0.0f) {
   int historyKeyframeSearchNum =
       25;  // enough. ex. [-25, 25] covers submap length of 50x1 = 50m if every
            // kf gap is 1m
@@ -494,41 +494,68 @@ std::optional<gtsam::Pose3> doICPVirtualRelative(int _loop_kf_idx,
   targetKeyframeCloudMsg.header.frame_id = "odom";
   pubLoopSubmapLocal->publish(targetKeyframeCloudMsg);
 
-  // ICP Settings
-  pcl::IterativeClosestPoint<PointType, PointType> icp;
-  icp.setMaxCorrespondenceDistance(
-      150);  // giseop , use a value can cover 2*historyKeyframeSearchNum range
-             // in meter
-  icp.setMaximumIterations(100);
-  icp.setTransformationEpsilon(1e-6);
-  icp.setEuclideanFitnessEpsilon(1e-6);
-  icp.setRANSACIterations(0);
+  // Stage 1: Coarse ICP matching with relaxed parameters
+  pcl::IterativeClosestPoint<PointType, PointType> icp_coarse;
+  icp_coarse.setMaxCorrespondenceDistance(30.0);  // Reduced from 150 to 30 meters
+  icp_coarse.setMaximumIterations(50);
+  icp_coarse.setTransformationEpsilon(1e-4);
+  icp_coarse.setEuclideanFitnessEpsilon(1e-4);
+  icp_coarse.setRANSACIterations(0);
 
-  // Align pointclouds
-  icp.setInputSource(cureKeyframeCloud);
-  icp.setInputTarget(targetKeyframeCloud);
+  // Use yaw difference from Scan Context as initial rotation guess
+  Eigen::Affine3f initial_guess = Eigen::Affine3f::Identity();
+  initial_guess.rotate(Eigen::AngleAxisf(yaw_diff, Eigen::Vector3f::UnitZ()));
+
+  icp_coarse.setInputSource(cureKeyframeCloud);
+  icp_coarse.setInputTarget(targetKeyframeCloud);
+  pcl::PointCloud<PointType>::Ptr coarse_result(
+      new pcl::PointCloud<PointType>());
+  icp_coarse.align(*coarse_result, initial_guess.matrix());
+
+  float coarseFitnessThreshold = 1.5;
+  if (icp_coarse.hasConverged() == false ||
+      icp_coarse.getFitnessScore() > coarseFitnessThreshold) {
+    std::cout << "[SC loop] Coarse ICP failed (" << icp_coarse.getFitnessScore()
+              << " > " << coarseFitnessThreshold << "). Reject this SC loop."
+              << std::endl;
+    return std::nullopt;
+  }
+
+  std::cout << "[SC loop] Coarse ICP passed (" << icp_coarse.getFitnessScore()
+            << " < " << coarseFitnessThreshold << "). Proceeding to fine ICP."
+            << std::endl;
+
+  // Stage 2: Fine ICP matching with strict parameters
+  pcl::IterativeClosestPoint<PointType, PointType> icp_fine;
+  icp_fine.setMaxCorrespondenceDistance(2.0);  // Strict correspondence distance
+  icp_fine.setMaximumIterations(100);
+  icp_fine.setTransformationEpsilon(1e-6);
+  icp_fine.setEuclideanFitnessEpsilon(1e-6);
+  icp_fine.setRANSACIterations(0);
+
+  icp_fine.setInputSource(cureKeyframeCloud);
+  icp_fine.setInputTarget(targetKeyframeCloud);
   pcl::PointCloud<PointType>::Ptr unused_result(
       new pcl::PointCloud<PointType>());
-  icp.align(*unused_result);
+  icp_fine.align(*unused_result, icp_coarse.getFinalTransformation());
 
-  float loopFitnessScoreThreshold =
-      0.3;  // user parameter but fixed low value is safe.
-  if (icp.hasConverged() == false ||
-      icp.getFitnessScore() > loopFitnessScoreThreshold) {
-    std::cout << "[SC loop] ICP fitness test failed (" << icp.getFitnessScore()
+  float loopFitnessScoreThreshold = 0.5;
+  if (icp_fine.hasConverged() == false ||
+      icp_fine.getFitnessScore() > loopFitnessScoreThreshold) {
+    std::cout << "[SC loop] Fine ICP fitness test failed (" << icp_fine.getFitnessScore()
               << " > " << loopFitnessScoreThreshold << "). Reject this SC loop."
               << std::endl;
     return std::nullopt;
   } else {
-    std::cout << "[SC loop] ICP fitness test passed (" << icp.getFitnessScore()
+    std::cout << "[SC loop] Fine ICP fitness test passed (" << icp_fine.getFitnessScore()
               << " < " << loopFitnessScoreThreshold << "). Add this SC loop."
               << std::endl;
   }
 
-  // Get pose transformation
+  // Get pose transformation from fine ICP
   float x, y, z, roll, pitch, yaw;
   Eigen::Affine3f correctionLidarFrame;
-  correctionLidarFrame = icp.getFinalTransformation();
+  correctionLidarFrame = icp_fine.getFinalTransformation();
   pcl::getTranslationAndEulerAngles(correctionLidarFrame, x, y, z, roll, pitch,
                                     yaw);
   gtsam::Pose3 poseFrom =
@@ -813,15 +840,17 @@ void performSCLoopClosure(void) {
   auto detectResult =
       scManager.detectLoopClosureID();  // first: nn index, second: yaw diff
   int SCclosestHistoryFrameID = detectResult.first;
+  float yaw_diff = detectResult.second;
   if (SCclosestHistoryFrameID != -1) {
     const int prev_node_idx = SCclosestHistoryFrameID;
     const int curr_node_idx =
         keyframePoses.size() - 1;  // because cpp starts 0 and ends n-1
     cout << "Loop detected! - between " << prev_node_idx << " and "
-         << curr_node_idx << "" << endl;
+         << curr_node_idx << " with yaw diff: " << yaw_diff << " rad" << endl;
 
     mBuf.lock();
     scLoopICPBuf.push(std::pair<int, int>(prev_node_idx, curr_node_idx));
+    scLoopICPBufWithYaw.push(std::tuple<int, int, float>(prev_node_idx, curr_node_idx, yaw_diff));
     // addding actual 6D constraints in the other thread, icp_calculation.
     mBuf.unlock();
   }
@@ -838,10 +867,39 @@ void process_lcd() {
   }
 }
 
+bool validateLoopClosure(int prev_idx, int curr_idx, gtsam::Pose3 relative_pose) {
+  mKF.lock();
+  gtsam::Pose3 pose_prev = Pose6DtoGTSAMPose3(keyframePoses[prev_idx]);
+  gtsam::Pose3 pose_curr = Pose6DtoGTSAMPose3(keyframePoses[curr_idx]);
+  mKF.unlock();
+  
+  gtsam::Pose3 pose_diff = pose_prev.between(pose_curr);
+  
+  double distance = pose_diff.translation().norm();
+  double max_loop_distance = 100.0;
+  if (distance > max_loop_distance) {
+    std::cout << "[Loop validation] Distance too large: " << distance 
+              << " > " << max_loop_distance << ". Reject loop." << std::endl;
+    return false;
+  }
+  
+  double yaw_diff = std::abs(pose_diff.rotation().yaw());
+  double max_yaw_diff = M_PI * 0.75;
+  if (yaw_diff > max_yaw_diff) {
+    std::cout << "[Loop validation] Yaw difference too large: " << yaw_diff 
+              << " > " << max_yaw_diff << ". Reject loop." << std::endl;
+    return false;
+  }
+  
+  std::cout << "[Loop validation] Passed. Distance: " << distance 
+            << ", Yaw diff: " << yaw_diff << std::endl;
+  return true;
+}
+
 void process_icp(void) {
   while (1) {
-    while (!scLoopICPBuf.empty()) {
-      if (scLoopICPBuf.size() > 30) {
+    while (!scLoopICPBufWithYaw.empty()) {
+      if (scLoopICPBufWithYaw.size() > 30) {
         RCLCPP_WARN(
             nh->get_logger(),
             "Too many loop closure candidates to be ICPed is waiting ... "
@@ -849,22 +907,28 @@ void process_icp(void) {
       }
 
       mBuf.lock();
-      std::pair<int, int> loop_idx_pair = scLoopICPBuf.front();
+      auto loop_idx_tuple = scLoopICPBufWithYaw.front();
+      scLoopICPBufWithYaw.pop();
       scLoopICPBuf.pop();
       mBuf.unlock();
 
-      const int prev_node_idx = loop_idx_pair.first;
-      const int curr_node_idx = loop_idx_pair.second;
+      const int prev_node_idx = std::get<0>(loop_idx_tuple);
+      const int curr_node_idx = std::get<1>(loop_idx_tuple);
+      float yaw_diff = std::get<2>(loop_idx_tuple);
+      
       auto relative_pose_optional =
-          doICPVirtualRelative(prev_node_idx, curr_node_idx);
+          doICPVirtualRelative(prev_node_idx, curr_node_idx, yaw_diff);
 
       if (relative_pose_optional) {
         gtsam::Pose3 relative_pose = relative_pose_optional.value();
-        mtxPosegraph.lock();
-        gtSAMgraph.add(gtsam::BetweenFactor<gtsam::Pose3>(
-            prev_node_idx, curr_node_idx, relative_pose, robustLoopNoise));
-        // runISAM2opt();
-        mtxPosegraph.unlock();
+        
+        if (validateLoopClosure(prev_node_idx, curr_node_idx, relative_pose)) {
+          mtxPosegraph.lock();
+          gtSAMgraph.add(gtsam::BetweenFactor<gtsam::Pose3>(
+              prev_node_idx, curr_node_idx, relative_pose, robustLoopNoise));
+          // runISAM2opt();
+          mtxPosegraph.unlock();
+        }
       }
     }
 

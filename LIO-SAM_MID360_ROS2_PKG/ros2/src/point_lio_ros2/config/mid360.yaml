@@ -3,7 +3,7 @@
         common:
             lid_topic: "/livox/lidar"
             imu_topic: "/livox/imu"
-            con_frame: true # true: if you need to combine several LiDAR frames into one
+            con_frame: false # true: if you need to combine several LiDAR frames into one
             con_frame_num: 4 # the number of frames combined
             cut_frame: false # true: if you need to cut one LiDAR frame into several subframes
             cut_frame_time_interval: 0.1 # should be integral fraction of 1 / LiDAR frequency

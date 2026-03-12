@@ -29,7 +29,7 @@ def generate_launch_description():
             {"mapping_line_resolution": 0.4},
             {"mapping_plane_resolution": 0.8},
             {"mapviz_filter_size": 0.05},
-            {"keyframe_meter_gap": 1.0},
+            {"keyframe_meter_gap": 5.0},
             {"sc_dist_thres": 0.3},
             {"sc_max_radius": 290.0},
             {"save_directory": "./save_data/"},
