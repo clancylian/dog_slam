@@ -23,7 +23,7 @@ color_table = jet_table
 color_table_len = color_table.shape[0]
 #
 
-data_dir = "/home/ywj/save_data/" # should end with / 
+data_dir = "/home/ywj/save_data/point/" # should end with / 
 scan_dir = data_dir + "Scans"
 scan_files = os.listdir(scan_dir) 
 scan_files.sort()
@@ -33,7 +33,7 @@ scan_files.sort()
 ##########################
 
 
-scan_idx_range_to_stack = [0, 749] #[0, len(scan_files)] # if you want a whole map, use [0, len(scan_files)]
+scan_idx_range_to_stack = [0, 750] #[0, len(scan_files) - 1] # if you want a whole map, use [0, len(scan_files)]
 node_skip = 1
 
 num_points_in_a_scan = 10000 # for reservation (save faster) // e.g., use 150000 for 128 ray lidars, 100000 for 64 ray lidars, 30000 for 16 ray lidars, if error occured, use the larger value.
