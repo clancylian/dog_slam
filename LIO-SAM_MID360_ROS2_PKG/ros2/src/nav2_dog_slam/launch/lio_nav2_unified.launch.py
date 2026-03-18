@@ -28,7 +28,8 @@ try:
         NAV2_BASE_CODE_PATH, NAV2_DEFAULT_MAP_FILE, NAV2_DEFAULT_WEB_SCRIPT_PATH,
         NAV2_DEFAULT_BT_XML_PATH, NAV2_DEFAULT_PARAMS_FILE,
         DEFAULT_USE_SIM_TIME_STRING, MAP_FRAME, ODOM_FRAME, 
-        BASE_LINK_FRAME, LIVOX_FRAME, SLAM_ALGORITHM
+        BASE_LINK_FRAME, LIVOX_FRAME, SLAM_ALGORITHM,
+        SC_PGO_SAVE_DIRECTORY
     )
 except Exception as e:
     print(f"导入global_config失败: {e}")
@@ -55,6 +56,7 @@ except Exception as e:
     BASE_LINK_FRAME = 'base_link' 
     LIVOX_FRAME = 'livox_frame'
     SLAM_ALGORITHM = 'super_lio'  # 默认算法
+    SC_PGO_SAVE_DIRECTORY = '/home/ztl/save_data/'
 
 # 获取当前launch文件所在目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -384,46 +386,47 @@ def generate_launch_description():
     )
     
     # NavSat Transform节点 - GPS坐标转换
-    navsat_transform_node = Node(
-        package='robot_localization',
-        executable='navsat_transform_node',
-        name='navsat_transform_node',
-        output='screen',
-        parameters=[os.path.join(bringup_dir, 'config', 'navsat_transform.yaml')],
-        remappings=[
-            ('/imu/data', '/imu/data'),  # IMU数据话题
-            ('/gps/fix', '/fix_filtered'),  # 使用预处理后的GPS数据
-            ('/odometry/gps', '/odometry/gps'),  # 转换后的GPS里程计
-            ('/odometry/filtered', '/odometry/gps_fused')  # EKF融合后的里程计
-        ]
-    )
+    # navsat_transform_node = Node(
+    #     package='robot_localization',
+    #     executable='navsat_transform_node',
+    #     name='navsat_transform_node',
+    #     output='screen',
+    #     parameters=[os.path.join(bringup_dir, 'config', 'navsat_transform.yaml')],
+    #     remappings=[
+    #         ('/imu/data', '/livox/imu'),  # IMU数据话题
+    #         ('/gps/fix', '/fix'),  # 使用预处理后的GPS数据
+    #         ('/odometry/gps', '/odometry/gps'),  # 转换后的GPS里程计
+    #         ('/odometry/filtered', '/odometry/gps_fused')  # EKF融合后的里程计
+    #     ]
+    # )
     
-    # EKF滤波器节点 - 传感器融合
-    ekf_filter_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
-        parameters=[os.path.join(bringup_dir, 'config', 'gps_ekf.yaml')],
-        remappings=[
-            ('/odometry/filtered', '/odometry/gps_fused'),  # GPS融合后的里程计
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static')
-        ]
-    )
+    # # EKF滤波器节点 - 传感器融合
+    # ekf_filter_node = Node(
+    #     package='robot_localization',
+    #     executable='ekf_node',
+    #     name='ekf_filter_node',
+    #     output='screen',
+    #     parameters=[os.path.join(bringup_dir, 'config', 'gps_ekf.yaml')],
+    #     remappings=[
+    #         ('/odometry/filtered', '/odometry/gps_fused'),  # GPS融合后的里程计
+    #         ('/tf', 'tf'),
+    #         ('/tf_static', 'tf_static')
+    #     ]
+    # )
     
-    # GPS融合生命周期管理器
-    lifecycle_manager_gps = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_gps',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'autostart': True,
-            'node_names': ['gps_preprocessor', 'navsat_transform_node', 'ekf_filter_node']
-        }]
-    )
+    # # GPS融合生命周期管理器
+    # lifecycle_manager_gps = Node(
+    #     package='nav2_lifecycle_manager',
+    #     executable='lifecycle_manager',
+    #     name='lifecycle_manager_gps',
+    #     output='screen',
+    #     parameters=[{
+    #         'use_sim_time': use_sim_time,
+    #         'autostart': True,
+    #         # 'node_names': ['gps_preprocessor', 'navsat_transform_node', 'ekf_filter_node']
+    #         'node_names': ['navsat_transform_node']
+    #     }]
+    # )
 
     # 5. 导航栈节点
     navigation_include = IncludeLaunchDescription(
@@ -453,14 +456,14 @@ def generate_launch_description():
             {"keyframe_meter_gap": 1.0},
             {"sc_dist_thres": 0.3},
             {"sc_max_radius": 290.0},
-            {"save_directory": "/home/ztl/save_data/"},  # 修改为实际保存路径
+            {"save_directory": SC_PGO_SAVE_DIRECTORY},  # 修改为实际保存路径
             {"use_sim_time": use_sim_time}
         ],
         remappings=[
             ("/aft_mapped_to_init", lio_config['odom_topic']),
             # ("/aft_mapped_to_init", "/aft_mapped_to_init"),
             ("/velodyne_cloud_registered_local", lio_config['pointcloud_topic']),
-            ("/cloud_for_scancontext", lio_config['octomap_topic']),
+            ("/cloud_for_scancontext", lio_config['pointcloud_topic']),
             ("/tf", "tf"),
             ("/tf_static", "tf_static"),
         ],
@@ -564,7 +567,12 @@ def generate_launch_description():
         nav2_actions.append(
             TimerAction(
                 period=2.5,
-                actions=[gps_preprocessor_node, navsat_transform_node, ekf_filter_node, lifecycle_manager_gps]
+                actions=[
+                    gps_preprocessor_node, 
+                    # navsat_transform_node, 
+                    # ekf_filter_node, 
+                    # lifecycle_manager_gps
+                    ]
             )
         )
         

@@ -86,6 +86,12 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install gps map calibrator script as executable
+install(
+  PROGRAMS src/gps_map_calibrator.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # Install web interface files
 install(
   DIRECTORY web

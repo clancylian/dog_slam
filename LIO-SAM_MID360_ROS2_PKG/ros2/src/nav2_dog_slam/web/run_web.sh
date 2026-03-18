@@ -11,6 +11,9 @@ case $(hostname) in
     "DESKTOP-4LS1SSN"|"DESKTOP-ypat")
         WEB_DIR="/home/ywj/dog_slam/LIO-SAM_MID360_ROS2_PKG/ros2/src/nav2_dog_slam/web"
         ;;
+    "ywj-B250-D3A")
+        WEB_DIR="/home/ywj/git/dog_slam/LIO-SAM_MID360_ROS2_PKG/ros2/src/nav2_dog_slam/web"
+        ;;
     *)
         # 默认路径
         WEB_DIR="/home/ztl/dog_slam/LIO-SAM_MID360_ROS2_PKG/ros2/src/nav2_dog_slam/web"

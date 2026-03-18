@@ -4,18 +4,19 @@
 navsat_transform_node:
   ros__parameters:
     # 基础参数
+    'use_sim_time': true
     frequency: 30.0
     delay: 0.0
     magnetic_declination_radians: 0.0
     yaw_offset: 0.0
-    zero_altitude: true
-    broadcast_utm_transform: false
-    broadcast_utm_transform_as_parent_frame: false
-    publish_filtered_gps: false
+    zero_altitude: false
+    broadcast_cartesian_transform: true
+    broadcast_cartesian_transform_as_parent_frame: true
+    publish_filtered_gps: true
     
     # 坐标系配置
     world_frame: map
-    base_link_frame: base_link
+    base_link_frame: base_footprint
     gps_frame: gps
     
     # GPS话题配置
@@ -36,4 +37,4 @@ navsat_transform_node:
     
     # 调试参数
     print_diagnostics: true
-    debug: false
+    debug: true

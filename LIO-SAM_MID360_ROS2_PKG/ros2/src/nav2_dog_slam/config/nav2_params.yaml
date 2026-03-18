@@ -25,7 +25,7 @@ controller_server:
     min_y_velocity_threshold: 0.1
     min_theta_velocity_threshold: 0.1  # 提高最小角速度阈值，避免低速无法转动
 
-    # odom_topic: "/Odometry"  # 新增参数
+    odom_topic: "/lio/odom"  # 新增参数
     # publish_zero_velocity: true  # 新增参数
     # speed_limit_topic: "/speed_limit"  # 新增参数
     
@@ -259,8 +259,8 @@ local_costmap:
       footprint_padding: 0.05  # footprint膨胀填充
       resolution: 0.05
       rolling_window: true
-      width: 8
-      height: 8
+      width: 12
+      height: 12
       
       # # 其他缺失参数
       # footprint: ""  # 新增参数 - 使用robot_radius代替
@@ -672,7 +672,7 @@ bt_navigator:
 map_server:
   ros__parameters:
     use_sim_time: true
-    yaml_filename: /home/ywj/git/dog_slam/LIO-SAM_MID360_ROS2_PKG/map_sample/map.yaml
+    yaml_filename: /home/ywj/slam_data/grid_map/map.yaml
 
 # =============================================================================
 # Smoother Server Configuration
@@ -853,7 +853,7 @@ slam_toolbox_node:
     # 扫描话题 - 绝对路径，即 /scan 而不是 scan
     scan_topic: /scan
     # 里程计话题
-    odom_topic: /aft_mapped_to_init
+    odom_topic: /lio/odom
 
     # 保持 transform publish（map->odom 发布通常需要）
     # 地图到里程计变换的发布周期，0 表示不发布变换

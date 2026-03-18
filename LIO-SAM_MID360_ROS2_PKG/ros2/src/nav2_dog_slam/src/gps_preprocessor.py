@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
 GPS数据预处理节点
-处理GPS无定位状态和NaN值，确保只有有效的GPS数据进入EKF滤波器
+处理GPS无定位状态和NaN值，将经纬度转换为UTM坐标，确保只有有效的GPS数据进入EKF滤波器
 """
 
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
 import math
+import pyproj
 
 
 class GPSPreprocessor(Node):
@@ -20,11 +22,17 @@ class GPSPreprocessor(Node):
         self.declare_parameter('max_hdop', 2.0)      # 最大水平精度因子
         self.declare_parameter('min_accuracy', 0.1)  # 最小精度（米）
         self.declare_parameter('status_threshold', 0)  # 状态阈值（0=FIX, -1=NO_FIX）
+        self.declare_parameter('utm_zone', 50)  # UTM区域
         
         self.min_satellites = self.get_parameter('min_satellites').value
         self.max_hdop = self.get_parameter('max_hdop').value
         self.min_accuracy = self.get_parameter('min_accuracy').value
         self.status_threshold = self.get_parameter('status_threshold').value
+        self.utm_zone = self.get_parameter('utm_zone').value
+        
+        # 创建投影器
+        self.wgs84 = pyproj.Proj(proj='latlong', datum='WGS84')
+        self.utm = pyproj.Proj(proj='utm', zone=self.utm_zone, datum='WGS84')
         
         # 订阅原始GPS数据
         self.gps_sub = self.create_subscription(
@@ -38,6 +46,13 @@ class GPSPreprocessor(Node):
         self.gps_pub = self.create_publisher(
             NavSatFix,
             '/fix_filtered',
+            10
+        )
+        
+        # 发布UTM坐标
+        self.utm_pub = self.create_publisher(
+            Odometry,
+            '/fix_utm',
             10
         )
         
@@ -55,6 +70,7 @@ class GPSPreprocessor(Node):
         
         self.get_logger().info('GPS预处理节点已启动')
         self.get_logger().info(f'参数配置: 最小卫星数={self.min_satellites}, 最大HDOP={self.max_hdop}')
+        self.get_logger().info(f'UTM区域: {self.utm_zone}')
     
     def is_valid_gps_data(self, gps_msg):
         """检查GPS数据是否有效"""
@@ -97,18 +113,17 @@ class GPSPreprocessor(Node):
         """处理原始GPS数据"""
         
         # 打印收到的GPS数据
-        self.get_logger().info('=====================================')
-        self.get_logger().info(f'收到GPS数据:')
-        self.get_logger().info(f'  时间戳: {msg.header.stamp.sec}.{msg.header.stamp.nanosec // 1000000}')
-        self.get_logger().info(f'  坐标系: {msg.header.frame_id}')
-        self.get_logger().info(f'  状态: {msg.status.status} (0=FIX, -1=NO_FIX)')
-        self.get_logger().info(f'  服务: {msg.status.service}')
-        self.get_logger().info(f'  纬度: {msg.latitude}')
-        self.get_logger().info(f'  经度: {msg.longitude}')
-        self.get_logger().info(f'  高度: {msg.altitude}')
-        self.get_logger().info(f'  协方差类型: {msg.position_covariance_type}')
-        self.get_logger().info(f'  协方差: {msg.position_covariance[0]:.6f}, {msg.position_covariance[4]:.6f}, {msg.position_covariance[8]:.6f}')
-        self.get_logger().info('=====================================')
+        # self.get_logger().info('=====================================')
+        # self.get_logger().info(f'收到GPS数据:')
+        # self.get_logger().info(f'  时间戳: {msg.header.stamp.sec}.{msg.header.stamp.nanosec // 1000000}')
+        # self.get_logger().info(f'  坐标系: {msg.header.frame_id}')
+        # self.get_logger().info(f'  状态: {msg.status.status} (0=FIX, -1=NO_FIX)')
+        # self.get_logger().info(f'  服务: {msg.status.service}')
+        self.get_logger().debug(f'纬度: {msg.latitude}, 经度: {msg.longitude}')
+        # self.get_logger().info(f'  高度: {msg.altitude}')
+        # self.get_logger().info(f'  协方差类型: {msg.position_covariance_type}')
+        # self.get_logger().info(f'  协方差: {msg.position_covariance[0]:.6f}, {msg.position_covariance[4]:.6f}, {msg.position_covariance[8]:.6f}')
+        # self.get_logger().info('=====================================')
         
         # 检查数据有效性
         is_valid = self.is_valid_gps_data(msg)
@@ -125,7 +140,7 @@ class GPSPreprocessor(Node):
             # 存储最后一个有效GPS数据
             self.last_valid_gps = msg
             
-            # 发布处理后的数据
+            # 发布处理后的GPS数据
             filtered_msg = NavSatFix()
             filtered_msg.header = msg.header
             filtered_msg.status = msg.status
@@ -139,6 +154,20 @@ class GPSPreprocessor(Node):
             filtered_msg.header.frame_id = f"gps_hdop_{hdop:.1f}"
             
             self.gps_pub.publish(filtered_msg)
+            
+            # 转换为UTM坐标并发布
+            try:
+                x, y = pyproj.transform(self.wgs84, self.utm, msg.longitude, msg.latitude)
+                odom = Odometry()
+                odom.header = msg.header
+                odom.header.frame_id = 'utm'
+                odom.pose.pose.position.x = x
+                odom.pose.pose.position.y = y
+                odom.pose.pose.position.z = msg.altitude if not math.isnan(msg.altitude) else 0.0
+                self.utm_pub.publish(odom)
+                self.get_logger().debug(f'发布UTM坐标: x={x:.2f}, y={y:.2f}')
+            except Exception as e:
+                self.get_logger().error(f'UTM转换失败: {e}')
             
             self.get_logger().debug(f'发布有效GPS数据: lat={msg.latitude:.6f}, lon={msg.longitude:.6f}, HDOP={hdop:.1f}')
             
