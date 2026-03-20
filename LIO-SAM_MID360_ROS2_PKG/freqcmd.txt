@@ -64,7 +64,7 @@ scripts/pcd_to_png_and_yaml.py
 # 录制点云信息供离线调试：
 cd dog_slam
 source LIO-SAM_MID360_ROS2_PKG/ros2/install/setup.bash
-nohup ros2 bag record -o /home/ztl/slam_data/livox_record_tilt_test/ /livox/lidar /livox/imu > record.log &
+nohup ros2 bag record -o /home/ztl/slam_data/livox_record_tilt_test/ /livox/lidar /livox/imu --max-cache-size 5000000000 > record.log &
 tail -f record.log 
 ps -ef | grep  livox_record_tilt_test
 kill -

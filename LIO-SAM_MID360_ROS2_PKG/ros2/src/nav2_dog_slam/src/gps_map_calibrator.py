@@ -38,8 +38,10 @@ class GPSMapCalibrator(Node):
         self.declare_parameter('num_calibration_points', 20)
         self.declare_parameter('min_distance', 10.0)
         self.declare_parameter('tf_timeout', 2.0)
-        self.declare_parameter('tf_publish_rate', 0.1)
-        self.declare_parameter('publish_threshold', 10.0)
+        self.declare_parameter('publish_threshold', 0.01)
+        self.declare_parameter('ransac_iterations', 1000)
+        self.declare_parameter('ransac_threshold', 2.0)
+        self.declare_parameter('ransac_min_samples', 3)
         # self.declare_parameter('mode', 'calibration')  # 模式：'calibration'标定模式，'localization'定位模式
         self.declare_parameter('mode', 'localization')
         
@@ -51,8 +53,10 @@ class GPSMapCalibrator(Node):
         self.num_calibration_points = self.get_parameter('num_calibration_points').value
         self.min_distance = self.get_parameter('min_distance').value
         self.tf_timeout = self.get_parameter('tf_timeout').value
-        self.tf_publish_rate = self.get_parameter('tf_publish_rate').value
         self.publish_threshold = self.get_parameter('publish_threshold').value
+        self.ransac_iterations = self.get_parameter('ransac_iterations').value
+        self.ransac_threshold = self.get_parameter('ransac_threshold').value
+        self.ransac_min_samples = self.get_parameter('ransac_min_samples').value
         self.mode = self.get_parameter('mode').value  # 模式
         
         if user_calibration_file:
@@ -87,6 +91,7 @@ class GPSMapCalibrator(Node):
             if self.load_calibration():
                 self.get_logger().info('定位模式：从文件加载校准参数成功')
                 self.calibration_done = True
+                self.setup_tf_listener()
                 self.setup_tf_broadcaster()
                 self.setup_subscribers()
             else:
@@ -225,20 +230,12 @@ class GPSMapCalibrator(Node):
                                    f'map=({map_x:.2f}, {map_y:.2f}), '
                                    f'GPS_UTM=({gps_utm_x:.2f}, {gps_utm_y:.2f})')
     
-    def calculate_calibration(self):
-        if len(self.calibration_data) < 3:
-            self.get_logger().error('校准数据不足，至少需要3个点')
-            return
-        
-        map_points = np.array([[d[0], d[1]] for d in self.calibration_data])
-        gps_utm_points = np.array([[d[2], d[3]] for d in self.calibration_data])
-    
     def recalculate_calibration(self):
-        """使用所有历史数据重新计算校准参数"""
+        """使用RANSAC算法重新计算校准参数，去除离群点"""
         self.get_logger().info(f'recalculate_calibration开始，all_calibration_data数量：{len(self.all_calibration_data)}')
         
-        if len(self.all_calibration_data) < 3:
-            self.get_logger().error('历史校准数据不足，至少需要3个点')
+        if len(self.all_calibration_data) < self.ransac_min_samples:
+            self.get_logger().error(f'历史校准数据不足，至少需要{self.ransac_min_samples}个点')
             return
         
         map_points = np.array([[d[0], d[1]] for d in self.all_calibration_data])
@@ -246,31 +243,60 @@ class GPSMapCalibrator(Node):
         
         self.get_logger().info(f'map_points数量：{len(map_points)}, gps_utm_points数量：{len(gps_utm_points)}')
         
-        # 重新设计校准算法：使用简单的最小二乘法
-        # 假设：map = R * gps_utm + t （忽略缩放，因为地图和UTM都是米制）
+        # 使用RANSAC算法进行鲁棒拟合
+        best_inliers = []
+        best_transform = None
+        best_error = float('inf')
         
-        # 计算中心点
-        map_center = np.mean(map_points, axis=0)
-        gps_utm_center = np.mean(gps_utm_points, axis=0)
+        num_points = len(self.all_calibration_data)
         
-        # 中心化坐标
-        map_centered = map_points - map_center
-        gps_utm_centered = gps_utm_points - gps_utm_center
+        self.get_logger().info(f'开始RANSAC迭代，迭代次数：{self.ransac_iterations}')
         
-        # 计算旋转矩阵
-        H = gps_utm_centered.T @ map_centered
-        U, S, Vt = np.linalg.svd(H)
-        R = Vt.T @ U.T
+        for iteration in range(self.ransac_iterations):
+            # 随机采样最小样本数
+            sample_indices = np.random.choice(num_points, self.ransac_min_samples, replace=False)
+            
+            # 提取采样点
+            sample_map = map_points[sample_indices]
+            sample_gps = gps_utm_points[sample_indices]
+            
+            # 使用采样点计算变换
+            R, t, yaw = self.calculate_transform_from_points(sample_map, sample_gps)
+            
+            if R is None:
+                continue
+            
+            # 计算所有点的误差
+            errors = self.calculate_transform_errors(map_points, gps_utm_points, R, t)
+            
+            # 统计内点（误差小于阈值的点）
+            inliers = np.where(errors < self.ransac_threshold)[0]
+            
+            # 如果内点数量更多，更新最佳结果
+            if len(inliers) > len(best_inliers):
+                best_inliers = inliers
+                best_transform = (R, t, yaw)
+                best_error = np.mean(errors[inliers])
+                
+                if (iteration + 1) % 100 == 0:
+                    self.get_logger().info(f'迭代{iteration + 1}: 内点数={len(inliers)}, 最佳内点数={len(best_inliers)}')
         
-        if np.linalg.det(R) < 0:
-            Vt[1, :] *= -1
-            R = Vt.T @ U.T
+        if len(best_inliers) < self.ransac_min_samples:
+            self.get_logger().error(f'RANSAC失败，内点数量不足：{len(best_inliers)}')
+            return
         
-        # 计算旋转角度
-        yaw = math.atan2(R[1, 0], R[0, 0])
+        # 使用所有内点重新计算最终变换
+        inlier_map = map_points[best_inliers]
+        inlier_gps = gps_utm_points[best_inliers]
         
-        # 计算平移：t = map_center - R * gps_utm_center
-        t = map_center - R @ gps_utm_center
+        self.get_logger().info(f'RANSAC完成：总点数={num_points}, 内点数={len(best_inliers)}, 离群点数={num_points - len(best_inliers)}')
+        
+        # 使用内点计算最终变换
+        R, t, yaw = self.calculate_transform_from_points(inlier_map, inlier_gps)
+        
+        if R is None:
+            self.get_logger().error('最终变换计算失败')
+            return
         
         # 使用固定缩放因子1.0（因为都是米制单位）
         scale = 1.0
@@ -297,6 +323,46 @@ class GPSMapCalibrator(Node):
         # 保存校准参数
         self.save_calibration()
         self.calibration_done = True
+    
+    def calculate_transform_from_points(self, map_points, gps_points):
+        """使用最小二乘法计算从GPS到map的变换"""
+        if len(map_points) < 2 or len(gps_points) < 2:
+            return None, None, None
+        
+        # 计算中心点
+        map_center = np.mean(map_points, axis=0)
+        gps_center = np.mean(gps_points, axis=0)
+        
+        # 中心化坐标
+        map_centered = map_points - map_center
+        gps_centered = gps_points - gps_center
+        
+        # 计算旋转矩阵
+        H = gps_centered.T @ map_centered
+        U, S, Vt = np.linalg.svd(H)
+        R = Vt.T @ U.T
+        
+        if np.linalg.det(R) < 0:
+            Vt[1, :] *= -1
+            R = Vt.T @ U.T
+        
+        # 计算旋转角度
+        yaw = math.atan2(R[1, 0], R[0, 0])
+        
+        # 计算平移：t = map_center - R * gps_center
+        t = map_center - R @ gps_center
+        
+        return R, t, yaw
+    
+    def calculate_transform_errors(self, map_points, gps_points, R, t):
+        """计算所有点在给定变换下的误差"""
+        # 应用变换：map = R * gps + t
+        transformed_gps = (R @ gps_points.T).T + t
+        
+        # 计算误差
+        errors = np.sqrt(np.sum((map_points - transformed_gps) ** 2, axis=1))
+        
+        return errors
     
     def validate_calibration(self, src_points, dst_points):
         """验证校准结果的合理性"""
@@ -370,13 +436,17 @@ class GPSMapCalibrator(Node):
         map_x = gps_utm_x * cos_yaw - gps_utm_y * sin_yaw + tx
         map_y = gps_utm_x * sin_yaw + gps_utm_y * cos_yaw + ty
         
-        # 检查距离阈值
+        # 获取base_frame在map坐标系下的位置
+        base_position = self.get_map_position()
+        
+        # 计算gps_loc到base_frame的距离
+        distance = -1.0
         should_publish = True
-        if self.last_published_pose is not None:
-            last_x, last_y = self.last_published_pose
-            distance = math.sqrt((map_x - last_x)**2 + (map_y - last_y)**2)
+        if base_position is not None:
+            base_x, base_y = base_position
+            distance = math.sqrt((map_x - base_x)**2 + (map_y - base_y)**2)
             if distance < self.publish_threshold:
-                self.get_logger().info(f'距离变化{distance:.2f}m < 阈值{self.publish_threshold}m，跳过发布')
+                self.get_logger().info(f'gps_loc到{self.base_frame}距离{distance:.2f}m < 阈值{self.publish_threshold}m，跳过发布')
                 should_publish = False
         
         if should_publish:
@@ -396,7 +466,7 @@ class GPSMapCalibrator(Node):
             self.tf_broadcaster.sendTransform(transform)
             self.last_published_pose = (map_x, map_y)
             
-            self.get_logger().info(f'发布TF: {self.map_frame}->{self.published_frame} pos=({map_x:.2f}, {map_y:.2f}), yaw={yaw:.2f}')
+            self.get_logger().info(f'gps_loc到{self.base_frame}距离{distance:.2f}m, 发布TF: {self.map_frame}->{self.published_frame} pos=({map_x:.2f}, {map_y:.2f}), yaw={yaw:.2f}')
             
             # 暂时注释掉initialpose发布
             # initialpose = PoseWithCovarianceStamped()
