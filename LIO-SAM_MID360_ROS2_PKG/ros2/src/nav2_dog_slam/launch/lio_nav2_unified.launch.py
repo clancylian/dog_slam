@@ -246,8 +246,8 @@ def generate_launch_description():
             {'default_call_service_timeout': 5.0},
             {'call_services_in_new_thread': True},
             {'send_action_goals_in_new_thread': True},
-            {'fragment_timeout': 600},  # 增加分片超时时间到600秒
-            {'max_message_size': 100000000}  # 设置最大消息大小为100MB
+            {'fragment_timeout': 600},
+            {'max_message_size': 100000000}
         ]
     )
     
@@ -513,14 +513,14 @@ def generate_launch_description():
                 )
             )
 
-    if MANUAL_BUILD_MAP or AUTO_BUILD_MAP:
-        # 建图模式 + SC-PGO
-        unified_nodes.append(
-            TimerAction(
-                period=10.0,  # 延迟10秒启动SC-PGO，确保LIO算法已初始化
-                actions=[sc_pgo_node]
-            )
-        )
+    # if MANUAL_BUILD_MAP or AUTO_BUILD_MAP:
+    #     # 建图模式 + SC-PGO
+    #     unified_nodes.append(
+    #         TimerAction(
+    #             period=10.0,  # 延迟10秒启动SC-PGO，确保LIO算法已初始化
+    #             actions=[sc_pgo_node]
+    #         )
+    #     )
     
 
         

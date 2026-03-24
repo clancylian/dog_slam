@@ -12,7 +12,6 @@ Panels:
         - /Map2/Topic1
         - /Map3/Topic1
         - /Map4/Topic1
-        - /Odometry1
       Splitter Ratio: 0.43529412150382996
     Tree Height: 814
   - Class: rviz_common/Selection
@@ -54,6 +53,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        aft_pgo:
+          Value: true
         base_footprint:
           Value: true
         base_link:
@@ -76,12 +77,15 @@ Visualization Manager:
       Tree:
         map:
           odom:
+            aft_pgo:
+              {}
             world:
+              base_footprint:
+                {}
               imu:
                 livox_frame:
                   base_link:
-                    base_footprint:
-                      {}
+                    {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -127,8 +131,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 3.2691376209259033
-        Min Value: -0.2084120661020279
+        Max Value: 52.455814361572266
+        Min Value: -0.8969830870628357
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -435,7 +439,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 100
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -456,7 +460,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /lio/robo/odom
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -503,16 +507,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 16.075632095336914
+      Distance: 59.14338684082031
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 28.644153594970703
-        Y: 17.01325225830078
-        Z: 0.005770095624029636
+        X: 18.37860870361328
+        Y: 2.4294497966766357
+        Z: 8.381501197814941
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -521,7 +525,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.60983145236969
+      Yaw: 4.709840774536133
     Saved: ~
 Window Geometry:
   Displays:
