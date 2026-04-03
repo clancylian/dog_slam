@@ -92,7 +92,7 @@ LIO_TOPIC_CONFIGS = {
 
 
 def generate_launch_description():
-    ns = LaunchConfiguration('ns', default='/')   # 默认 robot1
+    ns = LaunchConfiguration('ns', default='')   # 默认为空，使用时传入 'rkbot' 等命名空间
     # 定义启动参数
     use_sim_time = LaunchConfiguration('use_sim_time', default=DEFAULT_USE_SIM_TIME)
     map_file = LaunchConfiguration('map_file')
@@ -434,6 +434,7 @@ def generate_launch_description():
     navigation_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(launch_dir, 'navigation_launch.py')),
         launch_arguments={
+            'namespace': ns,
             'use_sim_time': use_sim_time,
             'autostart': 'True',
             'params_file': nav2_params_file,
