@@ -54,21 +54,28 @@ def generate_launch_description():
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
+    remappings = [('tf', 'tf'),
+                  ('tf_static', 'tf_static')]
 
-    # Create our own temporary YAML files that include substitutions
-    param_substitutions = {
-        'use_sim_time': use_sim_time,
-        'autostart': autostart}
+    # 创建RewrittenYaml配置
+    if (namespace == ''):
+        configured_params = params_file
+    else:
+        configured_params = ParameterFile(
+            RewrittenYaml(
+                source_file=params_file,
+                root_key=namespace,
+                param_rewrites={
+                    'global_frame_id': PythonExpression(['"', namespace, '" + "/map"']),
+                    'odom_frame_id': PythonExpression(['"', namespace, '" + "/odom"']),
+                    'base_frame_id': PythonExpression(['"', namespace, '" + "/base_footprint"']),
+                    'map_frame': PythonExpression(['"', namespace, '" + "/map"']),
+                    'odom_frame': PythonExpression(['"', namespace, '" + "/odom"']),
+                    'base_frame': PythonExpression(['"', namespace, '" + "/base_footprint"']),
+                },
+                convert_types=True),
+            allow_substs=True)
 
-    configured_params = ParameterFile(
-        RewrittenYaml(
-            source_file=params_file,
-            root_key=namespace,
-            param_rewrites=param_substitutions,
-            convert_types=True),
-        allow_substs=True)
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')

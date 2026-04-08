@@ -115,8 +115,16 @@ def generate_launch_description():
         name='super_lio_node',
         output='screen',
         parameters=[config_yaml, {'use_sim_time': DEFAULT_USE_SIM_TIME}],
-        prefix=['taskset -c 7'],   # 绑定 CPU 7
-        arguments=['--ros-args', '--log-level', 'info']
+        prefix=['taskset -c 7'],
+        arguments=['--ros-args', '--log-level', 'info'],
+        remappings=[
+            ('/lio/odom', 'lio/odom'),
+            ('/lio/imu/odom', 'lio/imu/odom'),
+            ('/lio/robo/odom', 'lio/robo/odom'),
+            ('/lio/path', 'lio/path'),
+            ('/lio/cloud_world', 'lio/cloud_world'),
+            ('/lio/body/cloud', 'lio/body/cloud'),
+        ]
     )
     ld.add_action(super_lio_node)
 

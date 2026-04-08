@@ -29,30 +29,36 @@ def generate_launch_description():
     # 定义不同LIO算法的话题映射配置
     LIO_TOPIC_CONFIGS = {
         'fast_lio': {
-            'pointcloud_topic': '/cloud_registered_body',
-            'odom_topic': '/Odometry',
-            'octomap_topic': '/cloud_registered',
-            'target_frame': 'base_footprint'
+            'pointcloud_topic': 'cloud_registered_body',
+            'odom_topic': 'Odometry',
+            'octomap_topic': 'cloud_registered',
+            'target_frame': 'base_footprint',
+            'map_frame': 'map'
         },
         'lio_sam': {
-            'pointcloud_topic': '/lio_sam/mapping/cloud_registered_raw',
-            'odom_topic': '/lio_sam/mapping/odometry',
-            'octomap_topic': '/lio_sam/mapping/cloud_registered',
-            'target_frame': 'base_footprint'
+            'pointcloud_topic': 'lio_sam/mapping/cloud_registered_raw',
+            'odom_topic': 'lio_sam/mapping/odometry',
+            'octomap_topic': 'lio_sam/mapping/cloud_registered',
+            'target_frame': 'base_footprint',
+            'map_frame': 'map'
         },
         'point_lio': {
-            'pointcloud_topic': '/cloud_registered_body',
-            'odom_topic': '/Odometry',
-            'octomap_topic': '/cloud_registeredy',
-            'target_frame': 'base_footprint'
+            'pointcloud_topic': 'cloud_registered_body',
+            'odom_topic': 'Odometry',
+            'octomap_topic': 'cloud_registeredy',
+            'target_frame': 'base_footprint',
+            'map_frame': 'map'
         },
         'super_lio': {
-            'pointcloud_topic': '/lio/body/cloud',
-            'odom_topic': '/lio/odom',
-            'octomap_topic': '/lio/cloud_world',
-            'target_frame': 'base_footprint'
+            'pointcloud_topic': 'lio/body/cloud',
+            'odom_topic': 'lio/odom',
+            'octomap_topic': 'lio/cloud_world',
+            'target_frame': 'base_footprint',
+            'map_frame': 'map'
         }
     }
+
+    ns = LaunchConfiguration('ns', default='/rkbot')   # 默认 rkbot
     
     # 获取当前选择的LIO算法的话题配置
     lio_config = LIO_TOPIC_CONFIGS.get(SLAM_ALGORITHM, LIO_TOPIC_CONFIGS['fast_lio'])
@@ -132,8 +138,8 @@ def generate_launch_description():
         executable='pointcloud_to_laserscan_node',
         name='pointcloud_to_laserscan',
         remappings=[
-            ('/cloud_in', lio_config['pointcloud_topic']),
-            ('/scan', '/scan'),
+            ('cloud_in', lio_config['pointcloud_topic']),
+            ('scan', 'scan'),
         ],
         parameters=[{
             'transform_tolerance': 0.1,
@@ -168,14 +174,35 @@ def generate_launch_description():
         ],
         prefix=['taskset -c 0,1,2,3'],   # 绑定 CPU 4
         remappings=[
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static')
+            ('tf', 'tf'),
+            ('tf_static', 'tf_static')
         ]
     )
 
     # GPS融合节点 - 使用robot_localization
     gps_ekf_params_file = os.path.join(bringup_dir, 'config', 'gps_ekf.yaml')
     navsat_transform_params_file = os.path.join(bringup_dir, 'config', 'navsat_transform.yaml')
+    
+    if ns != '':
+        have_ns = "True"
+    else:
+        have_ns = "False"
+
+    # 创建RewrittenYaml配置
+    configured_params = ParameterFile(
+        RewrittenYaml(
+            source_file=params_file,
+            root_key=ns,
+            param_rewrites={
+                    'global_frame_id': PythonExpression(['"', ns, '" + "/map" if ', have_ns, ' else "map"']),
+                    'odom_frame_id': PythonExpression(['"', ns, '" + "/odom" if ', have_ns, ' else "odom"']) ,
+                    'base_frame_id': PythonExpression(['"', ns, '" + "/base_footprint" if ', have_ns, ' else "base_footprint"']),
+                    'map_frame': PythonExpression(['"', ns, '" + "/map" if ', have_ns, ' else "map"']),
+                    'odom_frame': PythonExpression(['"', ns, '" + "/odom" if ', have_ns, ' else "odom"']),
+                    'base_frame': PythonExpression(['"', ns, '" + "/base_footprint" if ', have_ns, ' else "base_footprint"']) 
+                },
+            convert_types=True),
+        allow_substs=True)
     
     # GPS预处理节点 - 处理GPS数据质量问题
     gps_preprocessor_node = Node(
@@ -199,10 +226,10 @@ def generate_launch_description():
         output='screen',
         parameters=[navsat_transform_params_file],
         remappings=[
-            ('/imu/data', '/imu/data'),  # IMU数据话题
-            ('/gps/fix', '/gps/fix_filtered'),  # 使用预处理后的GPS数据
-            ('/odometry/gps', '/odometry/gps'),  # 转换后的GPS里程计
-            ('/odometry/filtered', '/odometry/gps_fused')  # EKF融合后的里程计
+            ('imu/data', 'imu/data'),
+            ('gps/fix', 'gps/fix_filtered'),
+            ('odometry/gps', 'odometry/gps'),
+            ('odometry/filtered', 'odometry/gps_fused')
         ]
     )
     
@@ -214,9 +241,9 @@ def generate_launch_description():
         output='screen',
         parameters=[gps_ekf_params_file],
         remappings=[
-            ('/odometry/filtered', '/odometry/gps_fused'),  # GPS融合后的里程计
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static')
+            ('odometry/filtered', 'odometry/gps_fused'),
+            ('tf', 'tf'),
+            ('tf_static', 'tf_static')
         ]
     )
 
@@ -226,16 +253,16 @@ def generate_launch_description():
         executable='amcl',
         name='amcl',
         output='screen',
-        parameters=[params_file],
+        parameters=[configured_params],  # 使用RewrittenYaml配置
         remappings=[
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static'),
-            ('/initialpose', '/initialpose'),
-            ('/amcl_pose', '/amcl_pose'),
-            ('/particle_cloud', '/particle_cloud'),
-            ('/scan', '/scan')
+            ('tf', 'tf'),
+            ('tf_static', 'tf_static'),
+            ('initialpose', 'initialpose'),
+            ('amcl_pose', 'amcl_pose'),
+            ('particle_cloud', 'particle_cloud'),
+            ('scan', 'scan')
         ],
-        prefix=['taskset -c 5,6'],   # 绑定 CPU 4
+        prefix=['taskset -c 5,6']
     )
     
     # lifecycle manager node to configure and activate map_server and amcl
