@@ -8,7 +8,7 @@
 - **统一导航系统**: 集成Nav2导航框架，支持自主探索和路径规划
 - **实时建图**: 支持在线建图和离线地图构建
 - **稳定导航**: 优化base_footprint，实现高速稳定导航
-- **Gazebo仿真**: 支持Gazebo GPU加速仿真
+- **Gazebo Garden仿真**: 支持Gazebo Garden GPU加速仿真，提供多种仿真环境
 
 ## 系统要求
 
@@ -245,6 +245,7 @@ LIO-SAM_MID360_ROS2_PKG/
 │   ├── SC_PGO_ROS2/                  # SC-PGO姿态图优化
 │   ├── nav2_dog_slam/                # 统一导航系统
 │   ├── livox_ros_driver2/            # Livox雷达驱动
+│   ├── livox_gazebo_garden/          # Gazebo Garden仿真环境
 │   ├── global_config/                # 全局配置管理
 │   └── m-explore/                    # 自主探索
 ├── map_sample/                       # 地图示例
@@ -253,6 +254,10 @@ LIO-SAM_MID360_ROS2_PKG/
 
 ## 最新更新
 
+- **2026-04-09**: Gazebo7可正常运行，删除旧gazebo版本，添加Gazebo Garden仿真支持
+- **2026-04-08**: 模拟小车已能发出点云，优化MPPI和AMCL参数，建图导航都可在无namespace情况使用
+- **2026-04-07**: 修正namespace问题，目前无namespace可建图
+- **2026-04-06**: Web控制界面添加路线和footprint显示
 - **2026-02-11**: 去除fasterlio和dio（未使用），修正pointlio的footprint参考问题，微调superlio点云保存参数
 - **2026-02-10**: 将base_footprint移至各lio算法输出
 - **2026-02-09**: 修正footprint计算
@@ -369,7 +374,9 @@ sudo chmod 777 ~/.gazebo/models/*
 ### 配置文件说明
 项目包含多个配置文件，用于调整系统参数：
 - **liosam_params.yaml**：LIO-SAM算法参数配置，包括传感器设置、特征提取阈值、回环检测等
-- **nav2_params.yaml**：Nav2导航参数配置，近期更新调整为差速运动模型，主要变更包括：
+- **nav2_params.yaml**：Nav2导航参数配置，近期更新优化MPPI控制器和AMCL定位：
+  - 强化MPPI避障能力，优化路径追踪性能
+  - 优化AMCL参数，支持无namespace模式下的建图和导航
   - 机器人运动模型从全向移动更改为差速移动模型
   - 优化了里程计运动模型噪声参数，提高室内环境定位精度
   - 调整了更新阈值参数，提高定位稳定性
@@ -412,6 +419,8 @@ ros2 launch nav2_dog_slam lio_nav2_unified.launch.py
 2. 界面功能说明：
    - **地图显示**：实时显示构建的地图
    - **机器人位置**：红色圆点表示机器人当前位置
+   - **机器人Footprint**：显示机器人footprint轮廓
+   - **规划路线**：实时显示导航规划路径
    - **目标点设置**：在地图上点击设置导航目标点
    - **位置源切换**：可在AMCL定位和LIO-SAM里程计之间切换
    - **地图颜色配置**：可自定义地图显示颜色
@@ -449,6 +458,29 @@ ros2 run lio_sam send_goal.py 1.0 2.0
 # 发送导航目标
 ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 2.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}}"
 ```
+
+### Gazebo Garden仿真
+项目支持Gazebo Garden仿真环境，可在无实体硬件的情况下进行算法验证和导航测试。
+
+#### 启动仿真环境
+```bash
+# 启动Gazebo Garden仿真（包含机器人模型和传感器）
+ros2 launch livox_gazebo_garden gazebo_sim.launch.py
+
+# 可选：指定不同的仿真世界
+# worlds目录包含多种环境：big.world, cafe.world, office_small.world等
+```
+
+#### 仿真环境特性
+- **MID360传感器仿真**：支持CPU和GPU两种点云生成模式
+- **多种仿真场景**：办公室、咖啡厅、城市道路等环境
+- **物理仿真**：支持差速驱动、IMU、碰撞检测
+- **点云输出**：模拟真实MID360雷达的点云数据
+
+#### 仿真与实机切换
+仿真环境使用与实机相同的接口，可无缝切换：
+- 仿真时：点云数据来自Gazebo传感器插件
+- 实机时：点云数据来自Livox雷达驱动
 
 ### 系统参数调整
 

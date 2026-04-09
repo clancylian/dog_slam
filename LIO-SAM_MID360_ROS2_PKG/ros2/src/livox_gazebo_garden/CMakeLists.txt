@@ -9,6 +9,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(jsoncpp_DIR "/tmp/jsoncpp_patch" CACHE PATH "Patched jsoncpp config" FORCE)
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -21,7 +23,7 @@ find_package(ament_index_cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(livox_ros_driver2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS chrono)
-set(jsoncpp_DIR "/tmp/jsoncpp_patch" CACHE PATH "Patched jsoncpp config" FORCE)
+
 
 find_package(sdformat12 REQUIRED)
 find_package(gz-sim7 REQUIRED)

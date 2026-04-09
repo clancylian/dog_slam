@@ -94,6 +94,13 @@ LIO_TOPIC_CONFIGS = {
         'octomap_topic': 'lio/cloud_world',
         'target_frame': 'base_footprint',
         'map_frame': 'map'
+    },
+    'super_lio_gazebo': {
+        'pointcloud_topic': 'lio/body/cloud',
+        'odom_topic': 'lio/odom',
+        'octomap_topic': 'lio/cloud_world',
+        'target_frame': 'base_footprint',
+        'map_frame': 'map'
     }
 }
 
@@ -220,6 +227,22 @@ def generate_launch_description():
         # 创建一个空的动作作为占位符
         from launch.actions import LogInfo
         super_lio_launch = LogInfo(msg="Super-LIO package not found, skipping...")
+
+    # Super-LIO
+    try:
+        super_lio_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([os.path.join(
+                get_package_share_directory('super_lio'), 'launch', 'gazebo_mid360.py')]),
+            launch_arguments={
+                'use_sim_time': use_sim_time
+            }.items(),
+            condition=IfCondition(PythonExpression(["'", SLAM_ALGORITHM, "' == 'super_lio_gazebo'"]))
+        )
+    except Exception as e:
+        print(f"Super-LIO package not found: {e}")
+        # 创建一个空的动作作为占位符
+        from launch.actions import LogInfo
+        super_lio_launch = LogInfo(msg="Super-LIO package not found, skipping...")
     
 
 
@@ -247,6 +270,11 @@ def generate_launch_description():
     # 注意：dynamic_base_footprint发布功能已迁移到各LIO算法的C++部分，此处不再需要
     
     # PointCloud to LaserScan 节点
+    if str(SLAM_ALGORITHM).endswith('gazebo'):
+        min_height = 0.0
+    else:
+        min_height = -0.3
+        
     pointcloud_to_laserscan_node = Node(
         package='pointcloud_to_laserscan',
         executable='pointcloud_to_laserscan_node',
@@ -257,7 +285,7 @@ def generate_launch_description():
         ],
         parameters=[{
             'transform_tolerance': 0.1,
-            'min_height': -0.3,
+            'min_height': min_height,
             'max_height': 1.0,
             'angle_min': -3.1,
             'angle_max': 3.1,

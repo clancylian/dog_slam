@@ -17,7 +17,7 @@ controller_server:
     
     # 缺失的顶层参数
     # bond_disable_heartbeat_timeout: false  # 新增参数
-    use_sim_time: false
+    use_sim_time: true
 
     controller_frequency: 10.0  # 保持10Hz控制器频率
     failure_tolerance: 3.0
@@ -89,14 +89,15 @@ controller_server:
       temperature: 0.1
       motion_model: "DiffDrive" 
       # motion_model: "Omni"  # 全向移动模型
+      motion_model: "Ackermann"  # Ackermann模型
       reset_period: 0.5
 
-      visualize: false
-      publish_optimal_trajectory: false
+      visualize: true
+      publish_optimal_trajectory: true
       # TrajectoryVisualizer参数
       TrajectoryVisualizer:
-        time_step: 10  # 新增参数
-        trajectory_step: 10  # 新增参数
+        time_step: 20  # 新增参数
+        trajectory_step: 20  # 新增参数
       
       # # 缺失的MPPI参数
       enforce_path_inversion: false  # 强制变向
@@ -115,33 +116,33 @@ controller_server:
       ConstraintCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 10.0  # 保持安全性权重
+        cost_weight: 50.0  # 保持安全性权重
       
       CostCritic:
         enabled: true
-        cost_weight: 5.0  # 大幅增加避障成本权重，强制避障
+        cost_weight: 30.0  # 大幅增加避障成本权重，强制避障
         cost_power: 2      # 大幅增加成本幂次，使靠近障碍物时成本急剧增加
         collision_cost: 254.0  # 碰撞成本设为最大值
         consider_footprint: true  # 考虑机器人轮廓
         critical_cost: 254.0  # 临界成本设为最大值
         inflation_layer_name: "inflation_layer_local"
-        near_goal_distance: 1.5  # 近目标距离
+        near_goal_distance: 0.5  # 近目标距离
 
       ObstaclesCritic:
         enabled: true
-        cost_weight: 20.0
-        cost_power: 2
+        cost_weight: 99.0
+        cost_power: 3
         collision_cost: 254.0
         consider_footprint: true
         critical_cost: 254.0
         inflation_layer_name: "inflation_layer_local"
-        near_goal_distance: 1.5
+        near_goal_distance: 0.5
         
       PathFollowCritic:
         enabled: true
-        cost_weight: 10.0  # 进一步降低路径跟踪权重，减少左右震荡
-        cost_power: 2
-        offset_from_furthest: 2  # 减少前瞻距离，提高实时响应
+        cost_weight: 1.0  # 进一步降低路径跟踪权重，减少左右震荡
+        cost_power: 1
+        offset_from_furthest: 1  # 减少前瞻距离，提高实时响应
         threshold_to_consider: 2.0  # Distance (m) between robot and goal to stop considering path following and allow goal critics to take over. It is wise to start with this as being the same as your prediction horizon to have a clean hand-off with the goal critic.
       
 
@@ -154,12 +155,12 @@ controller_server:
 
       PathAngleCritic:
         enabled: true
-        cost_weight: 1.0  # 大幅降低权重，减少方向修正的过度反应
-        cost_power: 1
+        cost_weight: 10.0  # 大幅降低权重，减少方向修正的过度反应
+        cost_power: 2
         forward_preference: true
-        offset_from_furthest: 2  # 进一步减少前瞻距离，提高实时响应
+        offset_from_furthest: 1  # 进一步减少前瞻距离，提高实时响应
         threshold_to_consider: 1.5  # Distance (m) between robot and goal to stop considering path angles and allow goal critics to take over.
-        max_angle_to_furthest: 0.5  # 大幅减少最大角度阈值，避免过度修正
+        max_angle_to_furthest: 0.1  # 大幅减少最大角度阈值，避免过度修正
         
       PreferForwardCritic:
         enabled: true
@@ -212,7 +213,7 @@ velocity_smoother:
     # 缺失的顶层参数
     # bond_disable_heartbeat_timeout: false  # 新增参数
     
-    use_sim_time: false
+    use_sim_time: true
     smoothing_frequency: 40.0
     scale_velocities: true
     feedback: "OPEN_LOOP" 
@@ -252,7 +253,7 @@ velocity_smoother:
 # =============================================================================
 planner_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
 
@@ -306,7 +307,7 @@ local_costmap:
     ros__parameters:
       # 缺失的顶层参数
       # bond_disable_heartbeat_timeout: false  # 新增参数
-      use_sim_time: false
+      use_sim_time: true
       update_frequency: 10.0
       publish_frequency: 10.0
       global_frame: odom
@@ -401,19 +402,19 @@ local_costmap:
       # 始终发送完整代价地图
       always_send_full_costmap: true
 
-    qos_overrides:
-      /tf:
-        subscription:
-          depth: 1
-          durability: "volatile"
-          history: "keep_last"
-          reliability: "best_effort"
-      /tf_static:
-        subscription:
-          depth: 1
-          durability: "transient_local"
-          history: "keep_last"
-          reliability: "reliable"
+      qos_overrides:
+        /tf:
+          subscription:
+            depth: 1
+            durability: "volatile"
+            history: "keep_last"
+            reliability: "best_effort"
+        /tf_static:
+          subscription:
+            depth: 1
+            durability: "transient_local"
+            history: "keep_last"
+            reliability: "reliable"
 # =============================================================================
 # Global Costmap Configuration
 # =============================================================================
@@ -422,7 +423,7 @@ global_costmap:
     ros__parameters:
       # 缺失的顶层参数
       # bond_disable_heartbeat_timeout: false  # 新增参数
-      use_sim_time: false
+      use_sim_time: true
       update_frequency: 0.5
       publish_frequency: 0.5
       global_frame: map
@@ -498,25 +499,25 @@ global_costmap:
       
       # 始终发送完整代价地图
       always_send_full_costmap: false
-    qos_overrides:
-      /tf:
-        subscription:
-          depth: 1
-          durability: "volatile"
-          history: "keep_last"
-          reliability: "best_effort"
-      /tf_static:
-        subscription:
-          depth: 1
-          durability: "transient_local"
-          history: "keep_last"
-          reliability: "reliable"
+      qos_overrides:
+        /tf:
+          subscription:
+            depth: 1
+            durability: "volatile"
+            history: "keep_last"
+            reliability: "best_effort"
+        /tf_static:
+          subscription:
+            depth: 1
+            durability: "transient_local"
+            history: "keep_last"
+            reliability: "reliable"
 # =============================================================================
 # Lifecycle Manager Configuration
 # =============================================================================
 lifecycle_manager:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     autostart: true
     node_names: ['planner_server', 'controller_server', 'bt_navigator', 'waypoint_follower', 'velocity_smoother']
     bond_timeout_ms: 10000
@@ -524,7 +525,7 @@ lifecycle_manager:
 # # 单独的定位生命周期管理器配置
 # lifecycle_manager_localization:
 #   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
 #     autostart: true
 #     node_names: ['map_server', 'amcl']
 #     bond_timeout_ms: 10000
@@ -534,7 +535,7 @@ lifecycle_manager:
 # =============================================================================
 amcl:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     
     # 基础参数 - 两个模型共用
     min_particles: 200
@@ -658,7 +659,7 @@ amcl:
 # =============================================================================
 bt_navigator:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     global_frame: map
     robot_base_frame: base_footprint
     bt_loop_duration: 10
@@ -676,7 +677,7 @@ bt_navigator:
     # transform_tolerance: 0.1
     
     # 行为树配置 - 使用ROS2标准行为树文件
-    default_nav_to_pose_bt_xml: "/home/ztl/dog_slam/LIO-SAM_MID360_ROS2_PKG/ros2/src/nav2_dog_slam/config/navigate_to_pose_w_replanning_and_recovery.xml"
+    default_nav_to_pose_bt_xml: "/home/ywj/git/dog_slam/LIO-SAM_MID360_ROS2_PKG/ros2/src/nav2_dog_slam/config/navigate_to_pose_w_replanning_and_recovery.xml"
     
     # 未使用的行为树文件（系统存在但当前配置未使用）:
     # - /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/navigate_w_replanning_and_round_robin_recovery.xml (系统无此文件)
@@ -774,8 +775,8 @@ bt_navigator:
 # =============================================================================
 map_server:
   ros__parameters:
-    use_sim_time: false
-    yaml_filename: /home/ztl/slam_data/grid_map/map.yaml
+    use_sim_time: true
+    yaml_filename: /home/ywj/slam_data/grid_map/map.yaml
 
 # =============================================================================
 # Smoother Server Configuration
@@ -784,7 +785,7 @@ smoother_server:
   ros__parameters:
     # 缺失的顶层参数
     # bond_disable_heartbeat_timeout: false  # 新增参数
-    use_sim_time: false
+    use_sim_time: true
     # costmap_topic: "local_costmap/costmap_raw"  # 新增参数
     # footprint_topic: "local_costmap/published_footprint"  # 新增参数
     robot_base_frame: "base_footprint"  # 新增参数
@@ -819,7 +820,7 @@ smoother_server:
 # =============================================================================
 behavior_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     # log_level: "debug"  # 启用debug级别日志输出
     
     # 缺失参数 - 根据系统输出添加
@@ -903,7 +904,7 @@ waypoint_follower:
   ros__parameters:
     # 缺失的顶层参数
     # bond_disable_heartbeat_timeout: false  # 新增参数
-    use_sim_time: false
+    use_sim_time: true
     loop_rate: 40
     stop_on_failure: false
     waypoint_task_executor_plugin: "wait_at_waypoint"
@@ -961,7 +962,7 @@ waypoint_follower:
 slam_toolbox_node:
   ros__parameters:
     # 基本设置
-    use_sim_time: false
+    use_sim_time: true
 
     # 模式 - "mapping" 或 "localization" 模式，用于 Ceres 问题创建的性能优化
     #     工作原理与使用场景

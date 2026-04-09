@@ -6,11 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /Grid1/Offset1
-        - /PointCloud21
         - /LaserScan1/Topic1
         - /Map2/Update Topic1
         - /Map3/Topic1
         - /Map3/Update Topic1
+        - /MarkerArray1
       Splitter Ratio: 0.5
     Tree Height: 746
   - Class: rviz_common/Selection
@@ -129,9 +129,23 @@ Visualization Manager:
           Value: true
         behind_right_wheel:
           Value: true
+        imu:
+          Value: true
         livox_frame:
           Value: true
+        map:
+          Value: true
         mid360_robot/livox_frame/lidar:
+          Value: true
+        odom:
+          Value: true
+        world:
+          Value: true
+        x500_depth_0/base_footprint:
+          Value: true
+        x500_depth_0/base_link:
+          Value: true
+        x500_depth_0/livox_frame/mid360_lidar:
           Value: true
       Marker Scale: 0.5
       Name: TF
@@ -139,26 +153,35 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        base_footprint:
-          base_link:
-            ahead_left_wheel:
-              {}
-            ahead_right_wheel:
-              {}
-            behind_left_wheel:
-              {}
-            behind_right_wheel:
-              {}
-            livox_frame:
-              mid360_robot/livox_frame/lidar:
+        map:
+          odom:
+            world:
+              base_footprint:
+                base_link:
+                  ahead_left_wheel:
+                    {}
+                  ahead_right_wheel:
+                    {}
+                  behind_left_wheel:
+                    {}
+                  behind_right_wheel:
+                    {}
+                  livox_frame:
+                    mid360_robot/livox_frame/lidar:
+                      {}
+              imu:
+                x500_depth_0/livox_frame/mid360_lidar:
+                  x500_depth_0/base_link:
+                    {}
+              x500_depth_0/base_footprint:
                 {}
       Update Interval: 0
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 3.163123846054077
-        Min Value: -1.2264243364334106
+        Max Value: 2.982752561569214
+        Min Value: -0.14755147695541382
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -166,7 +189,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -184,10 +207,10 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /livox/lidar
+        Value: /lio/cloud_world
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
       Color Scheme: map
@@ -280,7 +303,7 @@ Visualization Manager:
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.009999999776482582
-      Style: Flat Squares
+      Style: Points
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -423,10 +446,36 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /pcl_pose
       Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: Polygon
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /local_costmap/published_footprint
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        Candidate Trajectories: true
+        Optimal Trajectory: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /trajectories
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_link
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -469,25 +518,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10
+      Distance: 12.629354476928711
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 9.70247745513916
+        Y: -4.7783918380737305
+        Z: -0.6467222571372986
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.36039865016937256
+      Pitch: 1.0247973203659058
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.15539999306201935
+      Yaw: 1.9935868978500366
     Saved: ~
 Window Geometry:
   Displays:

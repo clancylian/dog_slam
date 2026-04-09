@@ -82,13 +82,15 @@ def generate_launch_description():
         output='screen',
     )
 
-    joint_state_publisher = Node(
-        package='joint_state_publisher',
-        executable='joint_state_publisher',
-        name='joint_state_publisher',
-        parameters=[{'use_sim_time': True, 'rate': 10.0}],
-        output='screen',
-    )
+    # joint_state_publisher 已禁用以节省CPU
+    # 如需关节状态可视化，取消注释以下代码
+    # joint_state_publisher = Node(
+    #     package='joint_state_publisher',
+    #     executable='joint_state_publisher',
+    #     name='joint_state_publisher',
+    #     parameters=[{'use_sim_time': True, 'rate': 10.0}],
+    #     output='screen',
+    # )
 
     static_transform_livox_frame_to_mid360_robot_livox_frame_lidar = Node(
         package='tf2_ros',
@@ -117,7 +119,7 @@ def generate_launch_description():
         static_transform_livox_frame_to_mid360_robot_livox_frame_lidar,
         TimerAction(period=20.0, actions=[
             bridge_node,
-            joint_state_publisher,
+            # joint_state_publisher,  # 已禁用
             rviz_node,
         ]),
     ])
