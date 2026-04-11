@@ -5,7 +5,7 @@
       <pose>0 0 0 0 0 0</pose>
       <inertial>
         <pose>0 0 0.04 0 0 0</pose>
-        <mass>10.0</mass>
+        <mass>50.0</mass>
         <inertia>
           <ixx>0.1</ixx>
           <ixy>0</ixy>
@@ -345,11 +345,11 @@
         <limit>
           <lower>-1.047</lower>
           <upper>1.047</upper>
-          <effort>1000</effort>
-          <velocity>100</velocity>
+          <effort>500</effort>
+          <velocity>10</velocity>
         </limit>
         <dynamics>
-          <damping>0.0</damping>
+          <damping>0.5</damping>
           <friction>0.0</friction>
         </dynamics>
       </axis>
@@ -468,11 +468,11 @@
         <limit>
           <lower>-1.047</lower>
           <upper>1.047</upper>
-          <effort>1000</effort>
-          <velocity>100</velocity>
+          <effort>100</effort>
+          <velocity>10</velocity>
         </limit>
         <dynamics>
-          <damping>0.0</damping>
+          <damping>0.5</damping>
           <friction>0.0</friction>
         </dynamics>
       </axis>
@@ -552,15 +552,12 @@
       </axis>
     </joint>
 
-    <!-- ==================== 差速驱动插件（后轮驱动） ==================== -->
+    <!-- ==================== 后轮差速驱动插件 ==================== -->
     <plugin name='gz::sim::systems::DiffDrive' filename='gz-sim-diff-drive-system'>
-      <!-- 后轮驱动 -->
       <left_joint>rear_left_wheel_joint</left_joint>
       <right_joint>rear_right_wheel_joint</right_joint>
-
       <wheel_separation>0.2</wheel_separation>
       <wheel_radius>0.045</wheel_radius>
-
       <topic>/cmd_vel</topic>
       <odom_topic>/odom</odom_topic>
       <tf_topic>/tf</tf_topic>
@@ -568,19 +565,25 @@
       <child_frame_id>base_footprint</child_frame_id>
     </plugin>
 
-    <!-- ==================== 阿克曼转向插件（前轮转向，无动力） ==================== -->
+    <!-- ==================== 前轮差速驱动插件 ==================== -->
+    <plugin name='gz::sim::systems::DiffDrive' filename='gz-sim-diff-drive-system'>
+      <left_joint>front_left_wheel_joint</left_joint>
+      <right_joint>front_right_wheel_joint</right_joint>
+      <wheel_separation>0.2</wheel_separation>
+      <wheel_radius>0.045</wheel_radius>
+      <topic>/cmd_vel</topic>
+    </plugin>
+
+    <!-- ==================== 前轮转向控制器（阿克曼转向，仅转向） ==================== -->
     <plugin name='gz::sim::systems::AckermannSteering' filename='gz-sim-ackermann-steering-system'>
-      <!-- 前轮只转向，不驱动 -->
+      <steering_only>true</steering_only>
       <left_steering_joint>front_left_steer_joint</left_steering_joint>
       <right_steering_joint>front_right_steer_joint</right_steering_joint>
-
       <wheel_separation>0.2</wheel_separation>
       <wheel_base>0.2</wheel_base>
-      <wheel_radius>0.045</wheel_radius>
       <steering_limit>1.047</steering_limit>
-
-      <!-- 阿克曼插件不订阅cmd_vel，只处理转向 -->
-      <topic>/ackermann_steering</topic>
+      <steer_p_gain>50.0</steer_p_gain>
+      <topic>/cmd_vel</topic>
     </plugin>
   </model>
 </sdf>

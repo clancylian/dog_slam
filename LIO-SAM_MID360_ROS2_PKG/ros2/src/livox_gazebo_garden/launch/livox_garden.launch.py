@@ -113,6 +113,19 @@ def generate_launch_description():
         prefix=['taskset -c 0,1,2,3'],
     )
 
+    ackermann_controller = Node(
+        package='nav2_dog_slam',
+        executable='ackermann_controller.py',
+        name='ackermann_controller',
+        parameters=[{
+            'use_sim_time': True,
+            'wheel_base': 0.2,
+            'wheel_separation': 0.2,
+            'steering_limit': 1.047,
+        }],
+        output='screen',
+    )
+
     return LaunchDescription([
         *env_vars,
         gazebo_process,
