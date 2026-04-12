@@ -31,11 +31,10 @@ controller_server:
     # speed_limit_topic: "/speed_limit"  # 新增参数
     
     # 插件配置
-    controller_plugins: ["FollowPath"]  # 新增参数
+    controller_plugins: ["FollowPath"]  # 使用DWB控制器替代MPPI
     
     # 其他缺失参数
     goal_checker_plugins: ["goal_checker"]  # 新增参数
-    goal_checker_plugin: "goal_checker"
     
     progress_checker_plugin: "progress_checker"  # 新增参数
   
@@ -59,34 +58,30 @@ controller_server:
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
 
-      time_steps: 30  # 大幅减少时间步数，从40减到20，降低计算延迟
+      time_steps: 60  # 大幅减少时间步数，从40减到20，降低计算延迟
       # time_steps: 30
       model_dt: 0.05
-      batch_size: 200  # 大幅减少批量大小，从1500减到800，提高计算速度
+      batch_size: 400  # 大幅减少批量大小，从1500减到800，提高计算速度
       transform_tolerance: 0.2  # 减少变换容差，提高实时性
       
       # 全向移动速度限制 - 适应机器人结构特性
       ax_max: 2.0
       ax_min: -2.0
-      az_max: 4.5
-      az_min: -4.5
-      vx_std: 0.45  # 降低线速度采样标准差，减少速度波动
-      wz_std: 0.5  # 提高角速度采样标准差，增加转向探索性
+      az_max: 2.0
+      az_min: -2.0
+      vx_std: 1.0  # 提高线速度采样标准差，探索更高速轨迹
+      wz_std: 0.8  # 提高角速度采样标准差，增加转向探索性
       
-      vx_max: 2.0
-      # vx_max: 1.2
-      # vx_max: 0.6
+      vx_max: 5.0
       vy_max: 0.0
-      vy_std: 0.2  # 降低横移速度采样标准差
-      vx_min: -0.1
+      vy_std: 0.2
+      vx_min: -0.5
       wz_max: 2.0
-      # wz_max: 1.2
-      # wz_max: 1.0
       
       
       
       # 温度参数
-      temperature: 0.1
+      temperature: 0.3
       motion_model: "DiffDrive" 
       # motion_model: "Omni"  # 全向移动模型
       # motion_model: "Ackermann"  # Ackermann模型
@@ -99,7 +94,7 @@ controller_server:
       publish_optimal_trajectory: true
       # TrajectoryVisualizer参数
       TrajectoryVisualizer:
-        time_step: 1  # 新增参数
+        time_step: 5  # 新增参数
         trajectory_step: 20  # 新增参数
       
       # # 缺失的MPPI参数
@@ -108,7 +103,7 @@ controller_server:
       # inversion_yaw_tolerance: 0.2
       # gamma: 0.015  # 新增参数
       # iteration_count: 1  # 新增参数
-      max_robot_pose_search_dist: 0.5  # Max integrated distance ahead of robot pose to search for nearest path point in case of path looping.
+      max_robot_pose_search_dist: 2.0  # Max integrated distance ahead of robot pose to search for nearest path point in case of path looping.
       # prune_distance: 1.0  # 新增参数
       # regenerate_noises: true  # 新增参数
       # retry_attempt_limit: 1  # 新增参数
@@ -129,7 +124,7 @@ controller_server:
         consider_footprint: true  # 考虑机器人轮廓
         critical_cost: 254.0  # 临界成本设为最大值
         inflation_layer_name: "inflation_layer_local"
-        near_goal_distance: 0.5  # 近目标距离
+        near_goal_distance: 2.0  # 提前降低避障权重，让GoalCritic主导
 
       ObstaclesCritic:
         enabled: true
@@ -139,14 +134,14 @@ controller_server:
         consider_footprint: true
         critical_cost: 254.0
         inflation_layer_name: "inflation_layer_local"
-        near_goal_distance: 0.5
+        near_goal_distance: 2.0  # 提前降低避障权重
         
       PathFollowCritic:
         enabled: true
-        cost_weight: 10.0  # 进一步降低路径跟踪权重，减少左右震荡
+        cost_weight: 1.0  # 进一步降低路径跟踪权重，减少左右震荡
         cost_power: 1
-        offset_from_furthest: 4  # 减少前瞻距离，提高实时响应
-        threshold_to_consider: 1.0  # Distance (m) between robot and goal to stop considering path following and allow goal critics to take over. It is wise to start with this as being the same as your prediction horizon to have a clean hand-off with the goal critic.
+        offset_from_furthest: 8  # 减少前瞻距离，提高实时响应
+        threshold_to_consider: 3.0  # 提前让GoalCritic接管，避免过冲
       
 
       PathAlignCritic:
@@ -167,9 +162,9 @@ controller_server:
         
       PreferForwardCritic:
         enabled: true
-        cost_power: 2
-        cost_weight: 10.0  # 降低权重，减少直线前进的强制性
-        threshold_to_consider: 1.0  #Distance (m) between robot and goal to stop considering preferring forward and allow goal critics to take over.
+        cost_power: 1
+        cost_weight: 30.0  # 大幅提高权重，鼓励前进
+        threshold_to_consider: 2.0  # 接近目标时停止鼓励前进，让GoalCritic接管  #Distance (m) between robot and goal to stop considering preferring forward and allow goal critics to take over.
       
       # TwirlingCritic:
       #   enabled: false
@@ -177,21 +172,78 @@ controller_server:
 
       VelocityDeadbandCritic: 
         enabled: true
-        cost_weight: 50.0  # 增加死区评价器权重，减少低速抖动
-        cost_power: 2
+        cost_weight: 10.0  # 降低死区评价器权重
+        cost_power: 1
         deadband_velocities: [0.05, 0.1, 0.1]
         
       GoalCritic:
         enabled: true
-        cost_weight: 15.0  # 增加目标对齐评价器权重，强化终点减速
-        cost_power: 1  # 增加成本幂次，使距离目标越近减速效果越明显
-        threshold_to_consider: 1.0  # Minimal distance (m) between robot and goal above which goal distance cost considered. It is wise to start with this as being the same as your prediction horizon to have a clean hand-off with the path follower critic.
+        cost_weight: 40.0  # 大幅提高权重，强化终点减速
+        cost_power: 2  # 提高幂次，使距离目标越近减速效果越急剧
+        threshold_to_consider: 3.0  # 提前开始考虑目标距离（预测范围约3m）
 
       GoalAngleCritic:
         enabled: true
-        cost_weight: 15.0  
-        cost_power: 1 
-        threshold_to_consider: 0.5 #Minimal distance (m) between robot and goal above which angle goal cost considered.
+        cost_weight: 30.0  
+        cost_power: 2 
+        threshold_to_consider: 2.0  # 提前开始考虑目标角度
+
+    # DWB控制器参数 - 参照MPPI参数配置
+    FollowPathDWB:
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: true
+      
+      # 速度限制 - 降低速度提高稳定性
+      min_vel_x: -0.0
+      min_vel_y: 0.0
+      max_vel_x: 5.0
+      max_vel_y: 0.0
+      max_vel_theta: 2.0
+      min_speed_xy: 0.1
+      max_speed_xy: 5.0
+      min_speed_theta: 0.2
+      
+      # 加速度限制
+      acc_lim_x: 2.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 3.2
+      decel_lim_x: -2.5
+      decel_lim_y: 0.0
+      decel_lim_theta: -3.2
+      
+      # 轨迹采样参数 - 增加角速度采样提高转向精度
+      vx_samples: 20
+      vy_samples: 0
+      vtheta_samples: 60
+      sim_time: 1.5
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      
+      # 其他参数
+      transform_tolerance: 0.2
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: true
+      stateful: true
+      prune_plan: true
+      prune_distance: 1.0
+      
+      # 轨迹评分插件
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "PreferForward"]
+      
+      # Critics参数 - 优化转向
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.5
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.5
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
+      Oscillation.scale: 1.0
+      PreferForward.scale: 1.0
+      PreferForward.penalty: 1.0
 
     qos_overrides:
       /tf:
@@ -226,12 +278,12 @@ velocity_smoother:
     # odom_duration: 0.1
     
     # 移动速度限制 - 降低速度避免过于激进
-    max_velocity: [3.0, 1.5, 5.0]  # [vx_max, vy_max, vtheta_max] - 降低最大速度
+    max_velocity: [10.0, 1.5, 5.0]  # [vx_max, vy_max, vtheta_max] - 降低最大速度
     min_velocity: [-0.1, -1.5, -5.0]  # [vx_min, vy_min, vtheta_min] - 降低最小速度
     
     # 加速度限制 - 降低加速度避免急转急停
     max_accel: [3.0, 2.0, 10.0]  # [ax_max, ay_max, atheta_max] - 降低加速度
-    max_decel: [-50.0, -2.0, -10.0]  # [ax_min, ay_min, atheta_min] - 降低减速度
+    max_decel: [-5.0, -2.0, -10.0]  # [ax_min, ay_min, atheta_min] - 降低减速度
     
     # 其他参数
     deadband_velocity: [0.05, 0.1, 0.1]  # 设置死区速度，避免输出-0.01到+0.01之间的速度  被忽略
@@ -318,12 +370,12 @@ local_costmap:
       transform_tolerance: 0.5
       
       # 地图参数
-      footprint: "[[-0.2, -0.2], [-0.2, 0.2], [0.2, 0.2], [0.2, -0.2]]"  # 机器狗矩形footprint（base_link前移10cm）
+      footprint: "[[-0.4, -0.2], [-0.4, 0.2], [0.1, 0.2], [0.1, -0.2]]"  # 机器狗矩形footprint（base_link前移10cm）
       footprint_padding: 0.05  # footprint膨胀填充
       resolution: 0.05
       rolling_window: true
-      width: 8
-      height: 8
+      width: 12
+      height: 12
       
       # # 其他缺失参数
       # footprint: ""  # 新增参数 - 使用robot_radius代替
@@ -384,9 +436,9 @@ local_costmap:
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 5.0
+          raytrace_max_range: 15.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 5.0
+          obstacle_max_range: 15.0
           obstacle_min_range: 0.0
           # expected_update_rate: 0.0  # 新增参数
           # inf_is_valid: false  # 新增参数

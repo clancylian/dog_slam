@@ -359,7 +359,7 @@ ros2 param set controller_server  FollowPath.vx_min
 ros2 param set controller_server  FollowPath.vx_std
 ros2 param set controller_server  FollowPath.vy_max
 ros2 param set controller_server  FollowPath.vy_std
-ros2 param set controller_server  FollowPath.wz_max
+ros2 param set controller_server  FollowPath.wz_max 2.0
 ros2 param set controller_server  FollowPath.wz_std
 ros2 param set controller_server  controller_frequency
 ros2 param set controller_server  controller_plugins
