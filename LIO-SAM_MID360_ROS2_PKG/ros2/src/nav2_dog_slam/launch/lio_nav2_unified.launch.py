@@ -633,18 +633,18 @@ def generate_launch_description():
             )
         )
         
-        # GPS融合节点
-        nav2_actions.append(
-            TimerAction(
-                period=2.5,
-                actions=[
-                    gps_preprocessor_node, 
-                    # navsat_transform_node, 
-                    # ekf_filter_node, 
-                    # lifecycle_manager_gps
-                    ]
-            )
-        )
+        # # GPS融合节点
+        # nav2_actions.append(
+        #     TimerAction(
+        #         period=2.5,
+        #         actions=[
+        #             gps_preprocessor_node, 
+        #             # navsat_transform_node, 
+        #             # ekf_filter_node, 
+        #             # lifecycle_manager_gps
+        #             ]
+        #     )
+        # )
         
     # 导航栈
     nav2_actions.append(
