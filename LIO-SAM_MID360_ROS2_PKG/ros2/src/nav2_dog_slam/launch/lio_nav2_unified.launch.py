@@ -7,7 +7,7 @@ from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubs
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.descriptions import ParameterFile
 import os
-SC
+
 # 导入nav2_common的RewrittenYaml
 from nav2_common.launch import RewrittenYaml
 
