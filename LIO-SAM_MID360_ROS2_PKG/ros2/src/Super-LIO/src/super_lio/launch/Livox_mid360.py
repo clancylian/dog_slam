@@ -167,20 +167,20 @@ def generate_launch_description():
         executable='static_transform_publisher',
         parameters=[{'use_sim_time': DEFAULT_USE_SIM_TIME}],
         # arguments=['0.1', '0', '0.1', '0', '0.0', '0', 'base_link', 'livox_frame'],
-        arguments=['-0.1', '0', '-0.1', '0', str(deg_to_rad(-30)), '0', 'livox_frame', 'base_link'],
+        arguments=['-0.1', '0', '-0.1', '0', str(deg_to_rad(-7)), '0', 'livox_frame', 'base_link'],
         output='screen'
     )
     ld.add_action(livox_frame_to_base_link_tf)
 
-    base_link_to_base_footprint_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_link_to_base_footprint_tf',
-        parameters=[{'use_sim_time': DEFAULT_USE_SIM_TIME}],
-        arguments=['0.0', '0', '0.0', '0', '0.0', '0', 'base_link', 'base_footprint'],
-        output='screen'
-    )
-    ld.add_action(base_link_to_base_footprint_tf)
+    # base_link_to_base_footprint_tf = Node(
+    #     package='tf2_ros',
+    #     executable='static_transform_publisher',
+    #     name='base_link_to_base_footprint_tf',
+    #     parameters=[{'use_sim_time': DEFAULT_USE_SIM_TIME}],
+    #     arguments=['0.0', '0', '0.0', '0', '0.0', '0', 'base_link', 'base_footprint'],
+    #     output='screen'
+    # )
+    # ld.add_action(base_link_to_base_footprint_tf)
 
     # 根据模式添加相应的节点（按照LIO-SAM的逻辑）
     if RECORD_ONLY:

@@ -270,8 +270,8 @@ planner_server:
       # change_penalty: 9.9
 
       # # ---- 转弯代价（可稍微提高让路径更自然）----
-      # non_straight_penalty: 0.5
-      # cost_penalty: 0.5
+      non_straight_penalty: 1.2
+      cost_penalty: 2.0
 
       # retrospective_penalty: 10.0
 
