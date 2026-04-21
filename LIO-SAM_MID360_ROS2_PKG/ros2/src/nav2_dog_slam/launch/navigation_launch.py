@@ -27,7 +27,6 @@ from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
-    # Get the launch directory
     bringup_dir = get_package_share_directory('nav2_bringup')
 
     namespace = LaunchConfiguration('namespace')
@@ -39,6 +38,10 @@ def generate_launch_description():
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
+    
+    map_frame = LaunchConfiguration('map_frame')
+    odom_frame = LaunchConfiguration('odom_frame')
+    base_frame = LaunchConfiguration('base_frame')
 
     lifecycle_nodes = ['controller_server',
                        'smoother_server',
@@ -48,19 +51,21 @@ def generate_launch_description():
                        'waypoint_follower',
                        'velocity_smoother']
 
-    # Map fully qualified names to relative ones so the node's namespace can be prepended.
-    # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
-    # https://github.com/ros/geometry2/issues/32
-    # https://github.com/ros/robot_state_publisher/pull/30
-    # TODO(orduno) Substitute with `PushNodeRemapping`
-    #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
+    remappings = [('/tf', '/tf'),
+                  ('/tf_static', '/tf_static')]
 
-    # Create our own temporary YAML files that include substitutions
     param_substitutions = {
         'use_sim_time': use_sim_time,
-        'autostart': autostart}
+        'autostart': autostart,
+        'global_frame': odom_frame,
+        'robot_base_frame': base_frame,
+        'global_frame_id': map_frame,
+        'odom_frame_id': odom_frame,
+        'base_frame_id': base_frame,
+        'map_frame': map_frame,
+        'odom_frame': odom_frame,
+        'base_frame': base_frame,
+    }
 
     configured_params = ParameterFile(
         RewrittenYaml(
@@ -107,6 +112,18 @@ def generate_launch_description():
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level', default_value='info',
         description='log level')
+
+    declare_map_frame_cmd = DeclareLaunchArgument(
+        'map_frame', default_value='map',
+        description='Map frame id')
+
+    declare_odom_frame_cmd = DeclareLaunchArgument(
+        'odom_frame', default_value='odom',
+        description='Odom frame id')
+
+    declare_base_frame_cmd = DeclareLaunchArgument(
+        'base_frame', default_value='base_footprint',
+        description='Base frame id')
 
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
@@ -281,6 +298,9 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_map_frame_cmd)
+    ld.add_action(declare_odom_frame_cmd)
+    ld.add_action(declare_base_frame_cmd)
     # Add the actions to launch all of the navigation nodes
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)

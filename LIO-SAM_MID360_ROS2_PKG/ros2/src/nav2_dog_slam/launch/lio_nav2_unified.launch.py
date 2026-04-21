@@ -82,17 +82,23 @@ LIO_TOPIC_CONFIGS = {
         'target_frame': 'base_footprint'
     },
     'super_lio': {
-        'pointcloud_topic': '/lio/body/cloud',
-        'odom_topic': '/lio/odom',
-        'octomap_topic': '/lio/cloud_world',
+        'pointcloud_topic': 'lio/body/cloud',
+        'odom_topic': 'lio/odom',
+        'octomap_topic': 'lio/cloud_world',
         'target_frame': 'base_footprint'
-        # 'target_frame': 'base_link'
     }
 }
 
 
 def generate_launch_description():
-    ns = LaunchConfiguration('ns', default='')   # 默认为空，使用时传入 'rkbot' 等命名空间
+    ns = LaunchConfiguration('ns', default='')
+    
+    # 定义 namespace 感知的 frame 变量
+    # 当 ns 非空时，frame 加前缀；为空时保持原值
+    ns_map_frame = PythonExpression(["'", ns, "' == '' ? 'map' : str('", ns, "/map')"])
+    ns_odom_frame = PythonExpression(["'", ns, "' == '' ? 'odom' : str('", ns, "/odom')"])
+    ns_base_frame = PythonExpression(["'", ns, "' == '' ? 'base_footprint' : str('", ns, "/base_footprint')"])
+    
     # 定义启动参数
     use_sim_time = LaunchConfiguration('use_sim_time', default=DEFAULT_USE_SIM_TIME)
     map_file = LaunchConfiguration('map_file')
@@ -171,13 +177,13 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([os.path.join(
                 get_package_share_directory('super_lio'), 'launch', 'Livox_mid360.py')]),
             launch_arguments={
-                'use_sim_time': use_sim_time
+                'use_sim_time': use_sim_time,
+                'ns': ns
             }.items(),
             condition=IfCondition(PythonExpression(["'", SLAM_ALGORITHM, "' == 'super_lio'"]))
         )
     except Exception as e:
         print(f"Super-LIO package not found: {e}")
-        # 创建一个空的动作作为占位符
         from launch.actions import LogInfo
         super_lio_launch = LogInfo(msg="Super-LIO package not found, skipping...")
     
@@ -213,7 +219,7 @@ def generate_launch_description():
         name='pointcloud_to_laserscan',
         remappings=[
             ('/cloud_in', lio_config['pointcloud_topic']),
-            ('/scan', '/scan'),
+            ('/scan', 'scan'),
         ],
         parameters=[{
             'transform_tolerance': 0.1,
@@ -228,7 +234,7 @@ def generate_launch_description():
             'use_inf': False,
             'inf_epsilon': 1000.0,
             'use_sim_time': use_sim_time,
-            'target_frame': lio_config['target_frame'],
+            'target_frame': ns_base_frame,
             'concurrency_level': 1,
         }],
         output='screen',
@@ -277,15 +283,18 @@ def generate_launch_description():
                 'use_sim_time': use_sim_time,
                 'map_update_interval': 1.0,
                 'publish_occupancy_map': 'True',
-                'use_map_saver': True
+                'use_map_saver': True,
+                'odom_frame': ns_odom_frame,
+                'map_frame': ns_map_frame,
+                'base_frame': ns_base_frame,
             }
         ],
         prefix=['taskset -c 5,6'],
         remappings=[
-            ('/scan', '/scan'), 
+            ('/scan', 'scan'), 
             ('/odom', lio_config['odom_topic']),
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static'),
+            ('/tf', '/tf'),
+            ('/tf_static', '/tf_static'),
             ('/initialpose', '/initialpose')
         ],
         respawn=True,
@@ -299,7 +308,7 @@ def generate_launch_description():
         name='octomap_server',
         output='screen',
         parameters=[{
-            'frame_id': 'map',
+            'frame_id': ns_map_frame,
             'sensor_model/max_range': 100.0,
             'sensor_model/min_range': 0.4,
             'sensor_model/insert_free_space': 'True',
@@ -328,8 +337,8 @@ def generate_launch_description():
         ],
         prefix=['taskset -c 0,1,2,3'],
         remappings=[
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static')
+            ('/tf', '/tf'),
+            ('/tf_static', '/tf_static')
         ]
     )
 
@@ -339,10 +348,17 @@ def generate_launch_description():
         executable='amcl',
         name='amcl',
         output='screen',
-        parameters=[nav2_params_file],
+        parameters=[
+            nav2_params_file,
+            {
+                'global_frame_id': ns_map_frame,
+                'odom_frame_id': ns_odom_frame,
+                'base_frame_id': ns_base_frame,
+            }
+        ],
         remappings=[
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static')
+            ('/tf', '/tf'),
+            ('/tf_static', '/tf_static')
         ],
         prefix=['taskset -c 5,6']
     )
@@ -441,7 +457,10 @@ def generate_launch_description():
             'use_composition': 'False',
             'use_respawn': 'False',
             'container_name': 'nav2_container',
-            'log_level': 'info'
+            'log_level': 'info',
+            'map_frame': ns_map_frame,
+            'odom_frame': ns_odom_frame,
+            'base_frame': ns_base_frame,
         }.items()
     )
 
@@ -459,18 +478,17 @@ def generate_launch_description():
             {"keyframe_meter_gap": 1.0},
             {"sc_dist_thres": 0.3},
             {"sc_max_radius": 290.0},
-            {"save_directory": SC_PGO_SAVE_DIRECTORY},  # 修改为实际保存路径
+            {"save_directory": SC_PGO_SAVE_DIRECTORY},
             {"use_sim_time": use_sim_time}
         ],
         remappings=[
             ("/aft_mapped_to_init", lio_config['odom_topic']),
-            # ("/aft_mapped_to_init", "/aft_mapped_to_init"),
             ("/velodyne_cloud_registered_local", lio_config['pointcloud_topic']),
             ("/cloud_for_scancontext", lio_config['pointcloud_topic']),
-            ("/tf", "tf"),
-            ("/tf_static", "tf_static"),
+            ("/tf", "/tf"),
+            ("/tf_static", "/tf_static"),
         ],
-        prefix=['taskset -c 6'],   # 绑定 CPU 6
+        prefix=['taskset -c 6'],
     )
     
 
