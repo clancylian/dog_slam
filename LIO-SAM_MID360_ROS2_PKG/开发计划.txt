@@ -1,0 +1,20 @@
+costmap 使用点云体素         STVL插件
+测试VP控制器
+测试Smac Lattice规划器
+中狗高速度转换自适应
+
+
+
+
+
+
+
+
+
+
+
+
+
+costmap使用梯度地图检测三维通过性
+https://github.com/ANYbotics/grid_map/tree/master/grid_map_costmap_2d
+https://github.com/roboskel/traversability_layer
