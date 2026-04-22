@@ -339,7 +339,7 @@ local_costmap:
       # footprint: ""  # 新增参数 - 使用robot_radius代替
       # footprint_padding: 0.01  # 新增参数
       # lethal_cost_threshold: 100  # 新增参数
-      # map_topic: "/map"  # 新增参数
+      map_topic: "/map"  # 新增参数
       # observation_sources: "scan"  # 新增参数
       # origin_x: 0.0  # 新增参数
       # origin_y: 0.0  # 新增参数
@@ -561,7 +561,7 @@ amcl:
     # bond_disable_heartbeat_timeout: false  # 新增参数
     # tf_broadcast: true                     # 新增参数
     # transform_tolerance: 0.1               # 新增参数
-    # map_topic: "map"                       # 新增参数
+    map_topic: "/map"                       # 新增参数
     
     # 里程计运动模型噪声参数 - 室内环境优化
     alpha1: 0.001            # 进一步降低旋转-旋转噪声，室内旋转需要更高精度
@@ -575,8 +575,8 @@ amcl:
     # robot_model_type: "nav2_amcl::DifferentialMotionModel"
     
     # 更新阈值 - 两个模型共用
-    update_min_d: 0.3
-    update_min_a: 0.2
+    update_min_d: 1.0
+    update_min_a: 1.0
     resample_interval: 1
     # selective_resampling: false  # 删除不存在的参数
     
@@ -606,7 +606,7 @@ amcl:
     laser_min_range: 0.3
     laser_max_range: 100.0
     # laser_beam_step: 4
-    max_beams: 360
+    max_beams: 180
     
     # odom_topic: /lio_sam/mapping/odometry
 
@@ -788,8 +788,8 @@ smoother_server:
     # 缺失的顶层参数
     # bond_disable_heartbeat_timeout: false  # 新增参数
     use_sim_time: false
-    # costmap_topic: "local_costmap/costmap_raw"  # 新增参数
-    # footprint_topic: "local_costmap/published_footprint"  # 新增参数
+    costmap_topic: "local_costmap/costmap_raw"  # 新增参数
+    footprint_topic: "local_costmap/published_footprint"  # 新增参数
     robot_base_frame: "base_footprint"  # 新增参数
     transform_tolerance: 0.5  # 新增参数
     smoother_plugins: ["simple_smoother"]  # 新增参数
@@ -830,7 +830,7 @@ behavior_server:
     # 缺失参数 - 根据系统输出添加
     # bond_disable_heartbeat_timeout: false  # 新增参数
     behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]  # 修正参数名：plugins -> behavior_plugins
-    # costmap_topic: "local_costmap/costmap_raw"  # 新增参数
+    costmap_topic: "local_costmap/costmap_raw"  # 新增参数
     footprint_topic: "local_costmap/published_footprint"  # 新增参数
     cycle_frequency: 10.0  # 新增参数
     global_frame: "odom"  # 新增参数

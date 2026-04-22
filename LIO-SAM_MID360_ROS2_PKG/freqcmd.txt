@@ -387,3 +387,40 @@ ros2 param set controller_server  qos_overrides./clock.subscription.history
 ros2 param set controller_server  qos_overrides./clock.subscription.reliability
 ros2 param set controller_server  speed_limit_topic
 ros2 param set controller_server  use_sim_time
+
+
+
+11111111111111111111111111111111111111111111111111111111111111111111111111111111 | grep map
+ros2 param list  /rkbot/amcl            | grep map
+ros2 param list  /rkbot/behavior_server            | grep map
+ros2 param list  /rkbot/bt_navigator            | grep map
+ros2 param list  /rkbot/bt_navigator_navigate_through_poses_rclcpp_node            | grep map
+ros2 param list  /rkbot/bt_navigator_navigate_to_pose_rclcpp_node            | grep map
+ros2 param list  /rkbot/controller_server            | grep map
+ros2 param list  /rkbot/global_costmap/global_costmap            | grep map
+ros2 param list  /rkbot/imu_to_livox_frame_tf            | grep map
+ros2 param list  /rkbot/lifecycle_manager_amcl            | grep map
+ros2 param list  /rkbot/lifecycle_manager_map_server            | grep map
+ros2 param list  /rkbot/lifecycle_manager_navigation            | grep map
+ros2 param list  /rkbot/livox_frame_to_base_link_tf            | grep map
+ros2 param list  /rkbot/livox_lidar_publisher            | grep map
+ros2 param list  /rkbot/local_costmap/local_costmap            | grep map
+ros2 param list  /rkbot/map_server            | grep map
+ros2 param list  /rkbot/planner_server            | grep map
+ros2 param list  /rkbot/pointcloud_to_laserscan            | grep map
+ros2 param list  /rkbot/rosbridge_websocket            | grep map
+ros2 param list  /rkbot/smoother_server            | grep map
+ros2 param list  /rkbot/static_transform_map_to_odom            | grep map
+ros2 param list  /rkbot/static_transform_odom_to_world            | grep map
+ros2 param list  /rkbot/static_transform_world_to_imu            | grep map
+ros2 param list  /rkbot/super_lio_node            | grep map
+ros2 param list  /rkbot/transform_listener_impl_557f92d2e0            | grep map
+ros2 param list  /rkbot/transform_listener_impl_557fd74a30            | grep map
+ros2 param list  /rkbot/transform_listener_impl_558fb11eb0            | grep map
+ros2 param list  /rkbot/transform_listener_impl_5598f3bd40            | grep map
+ros2 param list  /rkbot/transform_listener_impl_55a7987e80            | grep map
+ros2 param list  /rkbot/transform_listener_impl_55b1caa3c0            | grep map
+ros2 param list  /rkbot/velocity_smoother            | grep map
+ros2 param list  /rkbot/waypoint_follower            | grep map
+ros2 param list  /rviz            | grep map
+ros2 param list  /transform_listener_impl_60584f0432d0            | grep map

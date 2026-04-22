@@ -108,7 +108,7 @@ LIO_TOPIC_CONFIGS = {
 
 
 def generate_launch_description():
-    ns = LaunchConfiguration('ns', default='rkbot')
+    ns = LaunchConfiguration('ns', default='')
     
     # 定义 namespace 感知的 frame 变量
     # 当 ns 非空时，frame 加前缀；为空时保持原值
@@ -116,6 +116,7 @@ def generate_launch_description():
     ns_odom_frame = PythonExpression(["'odom' if '", ns, "' == '' else str('", ns, "/odom')"])
     ns_base_frame = PythonExpression(["'base_footprint' if '", ns, "' == '' else str('", ns, "/base_footprint')"])
     ns_scan_topic = PythonExpression(["'/scan' if '", ns, "' == '' else str('/", ns, "/scan')"])
+    ns_map_topic = PythonExpression(["'/map' if '", ns, "' == '' else str('/", ns, "/map')"])
     
     # 定义启动参数
     use_sim_time = LaunchConfiguration('use_sim_time', default=DEFAULT_USE_SIM_TIME)
@@ -369,6 +370,7 @@ def generate_launch_description():
                 'odom_frame': ns_odom_frame,
                 'map_frame': ns_map_frame,
                 'base_frame': ns_base_frame,
+                'map_topic': ns_map_topic,
             }
         ],
         prefix=['taskset -c 5,6'],
@@ -439,6 +441,7 @@ def generate_launch_description():
                 'global_frame_id': ns_map_frame,
                 'odom_frame_id': ns_odom_frame,
                 'base_frame_id': ns_base_frame,
+                'map_topic': ns_map_topic,
             }
         ],
         remappings=[
