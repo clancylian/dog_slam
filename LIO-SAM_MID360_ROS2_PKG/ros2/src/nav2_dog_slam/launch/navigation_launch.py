@@ -42,6 +42,9 @@ def generate_launch_description():
     map_frame = LaunchConfiguration('map_frame')
     odom_frame = LaunchConfiguration('odom_frame')
     base_frame = LaunchConfiguration('base_frame')
+    scan_topic = LaunchConfiguration('scan_topic')
+
+    map_topic = PythonExpression(["'/", map_frame,"'"])
 
     lifecycle_nodes = ['controller_server',
                        'smoother_server',
@@ -52,11 +55,15 @@ def generate_launch_description():
                        'velocity_smoother']
 
     remappings = [('/tf', '/tf'),
-                  ('/tf_static', '/tf_static')]
+                  ('/tf_static', '/tf_static'),
+                  ('initialpose', '/initialpose'),
+                  ('goal_pose', '/goal_pose'),
+                  ('cmd_vel', '/cmd_vel')]
 
-    param_substitutions = {
+    param_substitutions_local = {
         'use_sim_time': use_sim_time,
         'autostart': autostart,
+        'global_frame': odom_frame,
         'robot_base_frame': base_frame,
         'global_frame_id': map_frame,
         'odom_frame_id': odom_frame,
@@ -64,13 +71,38 @@ def generate_launch_description():
         'map_frame': map_frame,
         'odom_frame': odom_frame,
         'base_frame': base_frame,
+        'topic': scan_topic,
+        'map_topic': map_topic
     }
 
-    configured_params = ParameterFile(
+    param_substitutions_global = {
+        'use_sim_time': use_sim_time,
+        'autostart': autostart,
+        'global_frame': map_frame,
+        'robot_base_frame': base_frame,
+        'global_frame_id': map_frame,
+        'odom_frame_id': odom_frame,
+        'base_frame_id': base_frame,
+        'map_frame': map_frame,
+        'odom_frame': odom_frame,
+        'base_frame': base_frame,
+        'topic': scan_topic,
+        'map_topic': map_topic
+    }
+
+    configured_params_local = ParameterFile(
         RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
-            param_rewrites=param_substitutions,
+            param_rewrites=param_substitutions_local,
+            convert_types=True),
+        allow_substs=True)
+
+    configured_params_global = ParameterFile(
+        RewrittenYaml(
+            source_file=params_file,
+            root_key=namespace,
+            param_rewrites=param_substitutions_global,
             convert_types=True),
         allow_substs=True)
 
@@ -134,7 +166,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params,{'global_frame': odom_frame}],
+                parameters=[configured_params_local],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 5,6'],
                 remappings=remappings + [('cmd_vel', 'cmd_vel_nav')]),
@@ -145,7 +177,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings),
@@ -156,7 +188,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params,{'global_frame': map_frame}],
+                parameters=[configured_params_global],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings),
@@ -167,7 +199,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params,{'global_frame': odom_frame}],
+                parameters=[configured_params_local],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings),
@@ -178,7 +210,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params,{'global_frame': map_frame}],
+                parameters=[configured_params_global],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings),
@@ -189,7 +221,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings),
@@ -200,7 +232,7 @@ def generate_launch_description():
                 output='screen',
                 respawn=use_respawn,
                 respawn_delay=2.0,
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 arguments=['--ros-args', '--log-level', log_level],
                 prefix=['taskset -c 0,1,2,3'],
                 remappings=remappings +
@@ -226,49 +258,49 @@ def generate_launch_description():
                 package='nav2_controller',
                 plugin='nav2_controller::ControllerServer',
                 name='controller_server',
-                parameters=[configured_params],
+                parameters=[configured_params_local],
                 # prefix=['taskset -c 5'],
                 remappings=remappings + [('cmd_vel', 'cmd_vel_nav')]),
             ComposableNode(
                 package='nav2_smoother',
                 plugin='nav2_smoother::SmootherServer',
                 name='smoother_server',
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings),
             ComposableNode(
                 package='nav2_planner',
                 plugin='nav2_planner::PlannerServer',
                 name='planner_server',
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings),
             ComposableNode(
                 package='nav2_behaviors',
                 plugin='behavior_server::BehaviorServer',
                 name='behavior_server',
-                parameters=[configured_params],
+                parameters=[configured_params_local],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings),
             ComposableNode(
                 package='nav2_bt_navigator',
                 plugin='nav2_bt_navigator::BtNavigator',
                 name='bt_navigator',
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings),
             ComposableNode(
                 package='nav2_waypoint_follower',
                 plugin='nav2_waypoint_follower::WaypointFollower',
                 name='waypoint_follower',
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings),
             ComposableNode(
                 package='nav2_velocity_smoother',
                 plugin='nav2_velocity_smoother::VelocitySmoother',
                 name='velocity_smoother',
-                parameters=[configured_params],
+                parameters=[configured_params_global],
                 # prefix=['taskset -c 1,2,3,4'],
                 remappings=remappings +
                            [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'cmd_vel')]),

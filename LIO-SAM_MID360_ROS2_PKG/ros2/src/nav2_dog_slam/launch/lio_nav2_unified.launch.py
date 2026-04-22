@@ -1,3 +1,5 @@
+import fractions
+from tkinter import Frame
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, TimerAction, IncludeLaunchDescription, ExecuteProcess
 from launch.conditions import IfCondition
@@ -106,13 +108,14 @@ LIO_TOPIC_CONFIGS = {
 
 
 def generate_launch_description():
-    ns = LaunchConfiguration('ns', default='')
+    ns = LaunchConfiguration('ns', default='rkbot')
     
     # 定义 namespace 感知的 frame 变量
     # 当 ns 非空时，frame 加前缀；为空时保持原值
     ns_map_frame = PythonExpression(["'map' if '", ns, "' == '' else str('", ns, "/map')"])
     ns_odom_frame = PythonExpression(["'odom' if '", ns, "' == '' else str('", ns, "/odom')"])
     ns_base_frame = PythonExpression(["'base_footprint' if '", ns, "' == '' else str('", ns, "/base_footprint')"])
+    ns_scan_topic = PythonExpression(["'/scan' if '", ns, "' == '' else str('/", ns, "/scan')"])
     
     # 定义启动参数
     use_sim_time = LaunchConfiguration('use_sim_time', default=DEFAULT_USE_SIM_TIME)
@@ -157,7 +160,8 @@ def generate_launch_description():
                     'base_frame_id': [ns, '/base_footprint'],
                     'map_frame': [ns, '/map'], 
                     'odom_frame': [ns, '/odom'],
-                    'base_frame': [ns, '/base_footprint']
+                    'base_frame': [ns, '/base_footprint'],
+                    'topic': [ns, '/scan']
                 },
                 convert_types=True),
             allow_substs=True)
@@ -294,8 +298,8 @@ def generate_launch_description():
         executable='pointcloud_to_laserscan_node',
         name='pointcloud_to_laserscan',
         remappings=[
-            ('/cloud_in', lio_config['pointcloud_topic']),
-            ('/scan', 'scan'),
+            ('cloud_in', lio_config['pointcloud_topic']),
+            ('scan', 'scan'),
             ('/tf', '/tf'),
             ('/tf_static', '/tf_static')
         ],
@@ -414,7 +418,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'use_sim_time': use_sim_time},
-            {'yaml_filename': map_file}
+            {'yaml_filename': map_file},
+            {'frame_id': ns_map_frame}
         ],
         prefix=['taskset -c 0,1,2,3'],
         remappings=[
@@ -438,7 +443,8 @@ def generate_launch_description():
         ],
         remappings=[
             ('/tf', '/tf'),
-            ('/tf_static', '/tf_static')
+            ('/tf_static', '/tf_static'),
+            ('initialpose', '/initialpose')
         ],
         prefix=['taskset -c 5,6']
     )
@@ -541,6 +547,7 @@ def generate_launch_description():
             'map_frame': ns_map_frame,
             'odom_frame': ns_odom_frame,
             'base_frame': ns_base_frame,
+            'scan_topic': ns_scan_topic
         }.items()
     )
 
