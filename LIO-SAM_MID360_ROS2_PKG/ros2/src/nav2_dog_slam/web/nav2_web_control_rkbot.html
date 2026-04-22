@@ -2101,23 +2101,23 @@
     
     // 检查话题并自动切换位置源
     function checkAndSwitchPositionSource(ros) {
-      console.log('检查 /amcl_pose 话题是否存在...');
+      console.log('检查 /rkbot/amcl_pose 话题是否存在...');
       
       // 尝试订阅 /amcl_pose，如果在3秒内收不到消息，则切换到 super_lio
       let amclReceived = false;
       let checkTimeout = null;
       
-      // 创建 /amcl_pose 订阅
+      // 创建 /rkbot/amcl_pose 订阅
       var amclCheckTopic = new ROSLIB.Topic({
         ros: ros,
-        name: '/amcl_pose',
+        name: '/rkbot/amcl_pose',
         messageType: 'geometry_msgs/PoseWithCovarianceStamped'
       });
       
       amclCheckTopic.subscribe(function(msg) {
         if (!amclReceived) {
           amclReceived = true;
-          console.log('收到 /amcl_pose 消息，使用 AMCL 定位');
+          console.log('收到 /rkbot/amcl_pose 消息，使用 AMCL 定位');
           
           // 取消订阅检测话题
           amclCheckTopic.unsubscribe();
@@ -2127,12 +2127,12 @@
         }
       });
       
-      console.log('等待 /amcl_pose 消息（3秒）...');
+      console.log('等待 /rkbot/amcl_pose 消息（3秒）...');
       
       // 3秒后如果没有收到消息，切换到 super_lio
       checkTimeout = setTimeout(function() {
         if (!amclReceived) {
-          console.log('3秒内未收到 /amcl_pose 消息，自动切换到 super_lio 里程计');
+          console.log('3秒内未收到 /rkbot/amcl_pose 消息，自动切换到 super_lio 里程计');
           amclCheckTopic.unsubscribe();
           
           // 切换到 super_lio
