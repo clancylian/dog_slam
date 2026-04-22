@@ -575,9 +575,9 @@ amcl:
     # robot_model_type: "nav2_amcl::DifferentialMotionModel"
     
     # 更新阈值 - 两个模型共用
-    update_min_d: 1.0
-    update_min_a: 1.0
-    resample_interval: 1
+    update_min_d: 0.1
+    update_min_a: 0.1
+    resample_interval: 10
     # selective_resampling: false  # 删除不存在的参数
     
     # 恢复参数 - 两个模型共用

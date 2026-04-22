@@ -436,7 +436,7 @@ def generate_launch_description():
         name='amcl',
         output='screen',
         parameters=[
-            nav2_params_file,
+            configured_params,
             {
                 'global_frame_id': ns_map_frame,
                 'odom_frame_id': ns_odom_frame,
